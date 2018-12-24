@@ -1,5 +1,7 @@
 from collections import OrderedDict
 from configparser import SafeConfigParser
+import datetime
+import hashlib
 import json
 import logging
 from logging import getLogger, Formatter, StreamHandler, DEBUG
@@ -100,13 +102,30 @@ def get_basename_without_ext(path):
     basename = os.path.basename(path)
     return os.path.splitext(basename)[0]
 
-def get_random_english_word():
+def get_current_time():
     """
     :rtype: str
     """
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+def get_random_english_word(with_index=False):
+    """
+    :type with_index: bool
+    :rtype: word
+    """
     path = os.path.join(os.path.dirname(__file__), "./englishwords.txt")
     words = read_lines(path)
-    return np.random.choice(words)
+    word = np.random.choice(words)
+    return word
+
+def hash_string(text):
+    """
+    :type text: str
+    :rtype: int
+    """
+    h = hashlib.sha256(text.encode()).hexdigest()
+    i = str(int(h, 16))
+    return int(i[:8]) # to limit the value between 0 and 2***32-1
 
 ############################
 # Functions/Classes for general IO
