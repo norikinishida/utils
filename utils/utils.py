@@ -104,9 +104,15 @@ def get_basename_without_ext(path):
 
 def get_current_time():
     """
+    :type year: bool
+    :type month: bool
+    :type day: bool
+    :type hour: bool
+    :type minute: bool
+    :type second: bool
     :rtype: str
     """
-    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    return datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
 def get_random_english_word(with_index=False):
     """
