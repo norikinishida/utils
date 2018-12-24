@@ -100,6 +100,14 @@ def get_basename_without_ext(path):
     basename = os.path.basename(path)
     return os.path.splitext(basename)[0]
 
+def get_random_english_word():
+    """
+    :rtype: str
+    """
+    path = os.path.join(os.path.dirname(__file__), "./englishwords.txt")
+    words = read_lines(path)
+    return np.random.choice(words)
+
 ############################
 # Functions/Classes for general IO
 
@@ -131,18 +139,42 @@ def read_vocab(path):
     writelog("utils.read_vocab", "Vocabulary size=%d" % len(vocab))
     return vocab
 
-def read_lines(path, process=lambda x: x):
+def read_lines(path, process=lambda line: line):
     """
     :type path: str
     :type process: function
-    :rtype: list of list of Any
+    :rtype: list of Any
     """
     lines = []
     for line in open(path):
-        items = line.strip().split()
-        items = process(items)
-        lines.append(items)
+        line = line.strip()
+        line = process(line)
+        lines.append(line)
     return lines
+
+def write_lines(path, lines, process=lambda line: line):
+    """
+    :type path: str
+    :type lines: list of Any
+    :type process: function
+    :rtype: None
+    """
+    with open(path, "w") as f:
+        for line in lines:
+            line = process(line)
+            f.write("%s\n" % line)
+
+def append_lines(path, lines, process=lambda line: line):
+    """
+    :type path: str
+    :type lines: list of Any
+    :type process: function
+    :rtype: None
+    """
+    with open(path, "a") as f:
+        for line in lines:
+            line = process(line)
+            f.write("%s\n" % line)
 
 def read_vectors(path):
     """
@@ -151,11 +183,24 @@ def read_vectors(path):
     """
     vectors = []
     for line in open(path):
-        items = line.strip().split()
-        vector = [float(item) for item in items]
+        vector = line.strip().split()
+        vector = [float(x) for x in vector]
         vectors.append(vector)
     vectors = np.asarray(vectors)
     return vectors
+
+def write_vectors(path, vectors):
+    """
+    :type path: str
+    :type vectors: numpy.ndarray(shape=(N,dim), dtype=float)
+    :rtype: None
+    """
+    with open(path, "w") as f:
+        for i in range(len(vectors)):
+            vector = vectors[i]
+            vector = [str(x) for x in vector]
+            vector = " ".join(vector)
+            f.write("%s\n" % vector)
 
 def read_conll(path):
     """
@@ -189,19 +234,6 @@ def write_conll(path, sentences):
             for items in sentence:
                 f.write("\t".join(items) + "\n")
             f.write("\n")
-
-def append_lines_to_file(path, lines):
-    """
-    :type path: str
-    :type lines: list of str
-    :rtype: None
-    """
-    with open(path, "a") as f:
-        for line in lines:
-            if not line.endswith("\n"):
-                line = line + "\n"
-            f.write(line)
-    writelog("utils.append_lines_to_file", "Appended %d lines to %s" % (len(lines), path))
 
 def extract_values_with_regex(filepath, regex, names):
     """
