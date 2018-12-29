@@ -91,6 +91,85 @@ class Config(object):
         else:
             return s
 
+def add_lines_to_configfile(path, new_lines, previous_key):
+    """
+    :type path: str
+    :type lines: list of str
+    :type previous_line: str
+    :rtype: None
+    """
+    cur_lines = open(path).readlines()
+    print(path)
+    with open(path, "w") as f:
+        for cur_line in cur_lines:
+            cur_line = cur_line.strip()
+            f.write("%s\n" % cur_line)
+            print(cur_line)
+
+            key = cur_line.split()[0]
+            if key == previous_key:
+                for new_line in new_lines:
+                    f.write("%s\n" % new_line)
+                    print(new_line)
+
+def replace_line_in_configfile(path, new_line, target_key):
+    """
+    :type path: str
+    :type line: str
+    :type target_key: str
+    :rtype: None
+    """
+    cur_lines = open(path).readlines()
+    print(path)
+    written = False
+    with open(path, "w") as f:
+        for cur_line in cur_lines:
+            cur_line = cur_line.strip()
+            if cur_line == "":
+                f.write("\n")
+                continue
+            key = cur_line.split()[0]
+            if key != target_key:
+                f.write("%s\n" % cur_line)
+                print(cur_line)
+            else:
+                assert not written
+                f.write("%s\n" % new_line)
+                print(new_line)
+                written = True
+
+def dump_hyperparams_summary(path_in, path_out, exception_names):
+    """
+    :type path_in: str
+    :type path_out: str
+    :type exception_names: list of str
+    """
+    result = [] # list of {str: str}
+
+    # Make a list of target filenames
+    filenames = os.listdir(path_in)
+    for filename in exception_names:
+        filenames.remove(filename)
+    filenames = [filename for filename in filenames
+                 if filename.endswith(".ini")]
+    filenames.sort()
+
+    for filename in filenames:
+        # Prepare a Config instance
+        path_config = os.path.join(path_in, filename)
+        config = Config(path_config)
+        # Read key-value pairs
+        keyval = OrderedDict()
+        keyval["name"] = filename
+        assert "hyperparams" in config.parser
+        for key in config.parser["hyperparams"].keys():
+            keyval[key] = config.parser["hyperparams"][key]
+        result.append(keyval)
+
+    df = pd.DataFrame(result)
+    print(df)
+    df.to_csv(path_out, index=False)
+
 ############################
 # Functions/Classes for general purpose
 
@@ -178,18 +257,6 @@ def write_lines(path, lines, process=lambda line: line):
     :rtype: None
     """
     with open(path, "w") as f:
-        for line in lines:
-            line = process(line)
-            f.write("%s\n" % line)
-
-def append_lines(path, lines, process=lambda line: line):
-    """
-    :type path: str
-    :type lines: list of Any
-    :type process: function
-    :rtype: None
-    """
-    with open(path, "a") as f:
         for line in lines:
             line = process(line)
             f.write("%s\n" % line)
