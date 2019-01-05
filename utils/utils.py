@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 from configparser import SafeConfigParser
 import datetime
 import hashlib
@@ -191,7 +191,7 @@ def get_random_english_word():
     """
     :rtype: word
     """
-    path = os.path.join(os.path.dirname(__file__), "./englishwords.txt")
+    path = os.path.join(os.path.dirname(__file__), "englishwords.txt")
     words = read_lines(path)
     word = np.random.choice(words)
     return word
@@ -341,6 +341,10 @@ def extract_values_with_regex(filepath, regex, names):
                 values[names[index]].append(match[index])
     return values
 
+def print_dict(dictionary):
+    for key in dictionary.keys():
+        print("%s: %s" % (key, dictionary[key]))
+
 ############################
 # Functions/Classes for manipulating lists/arrays/dictionary
 
@@ -378,6 +382,44 @@ def compare_dictionary_keys(dict1, dict2):
 
 ############################
 # Functions/Classes for analysis
+
+def get_word_counter(path):
+    """
+    :type path: str
+    :type process: function
+    """
+    counter = Counter()
+
+    for line in open(path):
+        tokens = line.strip().split()
+        counter.update(tokens)
+
+    return counter
+
+def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
+    """
+    :type path_dir: str
+    :type top_k: int
+    :type process: function
+    :rtype: None
+    """
+    filenames = os.listdir(path_dir)
+
+    stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+
+    counter = Counter()
+    for filename in filenames:
+        c = get_word_counter(os.path.join(path_dir, filename))
+        counter.update(c)
+    counter = counter.most_common()
+    counter = counter[:1000]
+
+    # Filtering stopwords
+    counter = [(w, freq) for w, freq in counter if not w in stopwords]
+
+    for k in range(min(top_k, len(counter))):
+        w, freq = counter[k]
+        writelog("utils.check_word_stats", "word=%s, frequency=%d" % (w, freq))
 
 def calc_score_stats(filepaths, regex, names):
     """
