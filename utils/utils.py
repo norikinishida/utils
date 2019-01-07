@@ -699,18 +699,17 @@ class DataPool(object):
         self._pool_attr_names = ["pool_%d" % path_i for path_i in range(len(self.paths))]
 
         # Count the number of lines in the text files
-        n_lines = None
+        self._n_lines = None
         for path in self.paths:
             # Count
             count = 0
             for _ in open(path):
                 count += 1
             # Check
-            if n_lines is None:
-                n_lines = count
+            if self._n_lines is None:
+                self._n_lines = count
             else:
-                assert count == n_lines
-        self._n_lines = n_lines
+                assert count == self._n_lines
 
         # Set the pool size
         self.pool_size = min(pool_size, self._n_lines)
@@ -760,7 +759,7 @@ class DataPool(object):
         """
         :rtype: list of Any
         """
-        if self._line_i >= self.n_lines:
+        if self._line_i >= self._n_lines:
             self._current_iterator = self._get_init_iterator()
             self._line_i = 0
 
@@ -790,7 +789,7 @@ class DataPool(object):
         :rtype: list of list of Any
         """
         output = []
-        line_indices = np.random.choice(self.n_lines, size=n_instances, replace=False)
+        line_indices = np.random.choice(self._n_lines, size=n_instances, replace=False)
         line_i = 0
         for tpl in self._get_init_iterator():
             if line_i in line_indices:
