@@ -666,11 +666,11 @@ def get_optimizer(name="smorms3"):
 class DataBatch(object):
 
     def __init__(self, **kargs):
-        self.attr_names = []
+        self._attr_names = []
         length = None
         for key, value in kargs.items():
             setattr(self, key, value)
-            self.attr_names.append(key)
+            self._attr_names.append(key)
             # Check
             if length is None:
                 length = len(value)
@@ -678,21 +678,25 @@ class DataBatch(object):
                 assert length == len(value)
 
     def __len__(self):
-        return len(getattr(self, self.attr_names[0]))
+        return len(getattr(self, self._attr_names[0]))
 
 class DataPool(object):
 
-    def __init__(self, paths, processes, pool_size=1000000):
+    def __init__(self, paths, processes=None, pool_size=1000000):
         """
         :type paths: list of str
         :type processes: list of function
         :type pool_size: int
         """
         self.paths = paths
-        self.processes = processes
 
-        self.n_paths = len(paths)
-        self.pool_attr_names = ["pool_%d" % path_i for path_i in range(self.n_paths)]
+        if processes is None:
+            self.processes = [lambda l: l for _ in range(self.paths)]
+        else:
+            assert len(processes) == len(self.paths)
+            self.processes = processes
+
+        self._pool_attr_names = ["pool_%d" % path_i for path_i in range(len(self.paths))]
 
         # Count the number of lines in the text files
         n_lines = None
@@ -712,24 +716,14 @@ class DataPool(object):
         self.pool_size = min(pool_size, self._n_lines)
 
         # Initialize the iterator
-        self.current_iterator = self._get_init_iterator()
+        self._current_iterator = self._get_init_iterator()
         self._line_i = 0
 
         # Create the pools
-        for pool_attr_name in self.pool_attr_names:
+        for pool_attr_name in self._pool_attr_names:
             empty_pool = np.zeros((self.pool_size), dtype="O")
             setattr(self, pool_attr_name, empty_pool)
-        self._fill_pool(indices=None)
-
-    def _get_init_iterator(self):
-        return zip(*[open(path) for path in self.paths])
-
-    def _process(self, tpl):
-        """
-        :type tpl: tuple of str
-        :rtype: list of Any
-        """
-        return [process(line.strip()) for line, process in zip(tpl, self.processes)]
+        self._fill_pools(indices=None)
 
     def __len__(self):
         return self._n_lines
@@ -742,30 +736,40 @@ class DataPool(object):
             lst = self._process(tpl)
             yield lst
 
-    def get_next_sample(self):
-        """
-        :rtype: list of Any
-        """
-        if self._line_i >= self._n_lines:
-            self.current_iterator = self._get_init_iterator()
-            self._line_i = 0
-
-        tpl = next(self.current_iterator)
-        lst = self._process(tpl)
-        self._line_i += 1
-        return lst
-
-    def get_next_batch(self, batch_size):
+    def get_instances(self, batch_size):
         """
         :type batch_size: int
         :rtype: list of numpy.ndarray(shape=(batch_size,), dtype="O")
         """
         indices = np.random.choice(self.pool_size, size=batch_size) # NOTE that ``replace'' is True.
-        output = [getattr(self, pool_attr_name)[indices] for pool_attr_name in self.pool_attr_names]
-        self._fill_pool(indices=indices)
+        output = [getattr(self, pool_attr_name)[indices] for pool_attr_name in self._pool_attr_names]
+        self._fill_pools(indices=indices)
         return output
 
-    def _fill_pool(self, indices=None):
+    def _get_init_iterator(self):
+        return zip(*[open(path) for path in self.paths])
+
+    def _process(self, tpl):
+        """
+        :type tpl: tuple of str
+        :rtype: list of Any
+        """
+        return [process(line.strip()) for line, process in zip(tpl, self.processes)]
+
+    def _read_line(self):
+        """
+        :rtype: list of Any
+        """
+        if self._line_i >= self.n_lines:
+            self._current_iterator = self._get_init_iterator()
+            self._line_i = 0
+
+        tpl = next(self._current_iterator)
+        lst = self._process(tpl)
+        self._line_i += 1
+        return lst
+
+    def _fill_pools(self, indices=None):
         """
         :type indices: list of int
         :rtype: None
@@ -775,18 +779,18 @@ class DataPool(object):
 
         for index in indices:
             # Read
-            lst = self.get_next_sample()
+            lst = self._read_line()
             # Assign
-            for pool_attr_name, line in zip(self.pool_attr_names, lst):
+            for pool_attr_name, line in zip(self._pool_attr_names, lst):
                 getattr(self, pool_attr_name)[index] = line
 
-    def get_random_samples(self, n_samples):
+    def get_random_instances(self, n_instances):
         """
-        :type n_samples: int
+        :type n_instances: int
         :rtype: list of list of Any
         """
         output = []
-        line_indices = np.random.choice(self._n_lines, size=n_samples, replace=False)
+        line_indices = np.random.choice(self.n_lines, size=n_instances, replace=False)
         line_i = 0
         for tpl in self._get_init_iterator():
             if line_i in line_indices:
