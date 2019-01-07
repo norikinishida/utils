@@ -680,6 +680,121 @@ class DataBatch(object):
     def __len__(self):
         return len(getattr(self, self.attr_names[0]))
 
+class DataPool(object):
+
+    def __init__(self, paths, pool_size=1000000):
+        """
+        :type paths: list of str
+        :type pool_size: int
+        """
+        self.paths = paths
+
+        self.n_paths = len(paths)
+        self.pool_attr_names = ["pool_%d" % path_i for path_i in range(self.n_paths)]
+
+        # Count the number of lines in the text files
+        n_lines = None
+        for path in self.paths:
+            # Count
+            count = 0
+            for _ in open(path):
+                count += 1
+            # Check
+            if n_lines is None:
+                n_lines = count
+            else:
+                assert count == n_lines
+        self._n_lines = n_lines
+
+        # Set the pool size
+        self.pool_size = min(pool_size, self._n_lines)
+
+        # Initialize the iterator
+        self.current_iterator = self._get_init_iterator()
+        self._line_i = 0
+
+        # Create the pools
+        for pool_attr_name in self.pool_attr_names:
+            empty_pool = np.zeros((self.pool_size), dtype="O")
+            setattr(self, pool_attr_name, empty_pool)
+        self._fill_pool(indices=None)
+
+    def _get_init_iterator(self):
+        return zip(*[open(path) for path in self.paths])
+
+    def _strip(self, tpl):
+        """
+        :type tpl: tuple of str
+        :rtype: list of str
+        """
+        return [line.strip() for line in tpl]
+
+    def __len__(self):
+        return self._n_lines
+
+    def __iter__(self):
+        """
+        :rtype: list of str
+        """
+        for tpl in self._get_init_iterator():
+            lst = self._strip(tpl)
+            yield lst
+
+    def get_next_sample(self):
+        """
+        :rtype: list of str
+        """
+        if self._line_i >= self._n_lines:
+            self.current_iterator = self._get_init_iterator()
+            self._line_i = 0
+
+        tpl = next(self.current_iterator)
+        lst = [line.strip() for line in tpl]
+        self._line_i += 1
+        return lst
+
+    def get_next_batch(self, batch_size):
+        """
+        :type batch_size: int
+        :rtype: list of numpy.ndarray(shape=(batch_size,), dtype="O")
+        """
+        indices = np.random.choice(self.pool_size, size=batch_size) # NOTE that ``replace'' is True.
+        output = [getattr(self, pool_attr_name)[indices] for pool_attr_name in self.pool_attr_names]
+        self._fill_pool(indices=indices)
+        return output
+
+    def _fill_pool(self, indices=None):
+        """
+        :type indices: list of int
+        """
+        if indices is None:
+            indices = range(self.pool_size)
+
+        for index in indices:
+            # Read
+            lst = self.get_next_sample()
+            # Assign
+            for pool_attr_name, line in zip(self.pool_attr_names, lst):
+                print(self.pool_0[index])
+                getattr(self, pool_attr_name)[index] = line
+                print(self.pool_0[index])
+                print("###")
+
+    def get_random_samples(self, n_samples):
+        """
+        :type n_samples: int
+        :rtype: list of list of str
+        """
+        output = []
+        line_indices = np.random.choice(self._n_lines, size=n_samples, replace=False)
+        line_i = 0
+        for tpl in self._get_init_iterator():
+            if line_i in line_indices:
+                lst = self._strip(tpl)
+                output.append(lst)
+            line_i += 1
+        return output
+
 class BestScoreHolder(object):
 
     def __init__(self, scale=1.0):
