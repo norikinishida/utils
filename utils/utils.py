@@ -682,12 +682,14 @@ class DataBatch(object):
 
 class DataPool(object):
 
-    def __init__(self, paths, pool_size=1000000):
+    def __init__(self, paths, processes, pool_size=1000000):
         """
         :type paths: list of str
+        :type processes: list of function
         :type pool_size: int
         """
         self.paths = paths
+        self.processes = processes
 
         self.n_paths = len(paths)
         self.pool_attr_names = ["pool_%d" % path_i for path_i in range(self.n_paths)]
@@ -722,34 +724,34 @@ class DataPool(object):
     def _get_init_iterator(self):
         return zip(*[open(path) for path in self.paths])
 
-    def _strip(self, tpl):
+    def _process(self, tpl):
         """
         :type tpl: tuple of str
-        :rtype: list of str
+        :rtype: list of Any
         """
-        return [line.strip() for line in tpl]
+        return [process(line.strip()) for line, process in zip(tpl, self.processes)]
 
     def __len__(self):
         return self._n_lines
 
     def __iter__(self):
         """
-        :rtype: list of str
+        :rtype: list of Any
         """
         for tpl in self._get_init_iterator():
-            lst = self._strip(tpl)
+            lst = self._process(tpl)
             yield lst
 
     def get_next_sample(self):
         """
-        :rtype: list of str
+        :rtype: list of Any
         """
         if self._line_i >= self._n_lines:
             self.current_iterator = self._get_init_iterator()
             self._line_i = 0
 
         tpl = next(self.current_iterator)
-        lst = [line.strip() for line in tpl]
+        lst = self._process(tpl)
         self._line_i += 1
         return lst
 
@@ -766,6 +768,7 @@ class DataPool(object):
     def _fill_pool(self, indices=None):
         """
         :type indices: list of int
+        :rtype: None
         """
         if indices is None:
             indices = range(self.pool_size)
@@ -775,22 +778,19 @@ class DataPool(object):
             lst = self.get_next_sample()
             # Assign
             for pool_attr_name, line in zip(self.pool_attr_names, lst):
-                print(self.pool_0[index])
                 getattr(self, pool_attr_name)[index] = line
-                print(self.pool_0[index])
-                print("###")
 
     def get_random_samples(self, n_samples):
         """
         :type n_samples: int
-        :rtype: list of list of str
+        :rtype: list of list of Any
         """
         output = []
         line_indices = np.random.choice(self._n_lines, size=n_samples, replace=False)
         line_i = 0
         for tpl in self._get_init_iterator():
             if line_i in line_indices:
-                lst = self._strip(tpl)
+                lst = self._process(tpl)
                 output.append(lst)
             line_i += 1
         return output
