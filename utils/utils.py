@@ -663,6 +663,23 @@ def get_optimizer(name="smorms3"):
 ############################
 # Functions/Classes for model training
 
+class DataBatch(object):
+
+    def __init__(self, **kargs):
+        self.attr_names = []
+        length = None
+        for key, value in kargs.items():
+            setattr(self, key, value)
+            self.attr_names.append(key)
+            # Check
+            if length is None:
+                length = len(value)
+            else:
+                assert length == len(value)
+
+    def __len__(self):
+        return len(getattr(self, self.attr_names[0]))
+
 class BestScoreHolder(object):
 
     def __init__(self, scale=1.0):
