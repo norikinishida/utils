@@ -806,21 +806,34 @@ class DataPool(object):
 
 class BestScoreHolder(object):
 
-    def __init__(self, scale=1.0):
-        self.best_score = -np.inf
+    def __init__(self, scale=1.0, higher_is_better=True):
+        self.scale = scale
+        self.higher_is_better = higher_is_better
+
+        if higher_is_better:
+            self.comparison_function = lambda b_c: b_c[0] < b_c[1]
+        else:
+            self.comparison_function = lambda b_c: b_c[0] > b_c[1]
+
+        if higher_is_better:
+            self.best_score = -np.inf
+        else:
+            self.best_score = np.inf
         self.best_step = 0
         self.patience = 0
-        self.scale = scale
 
     def init(self):
-        self.best_score = -np.inf
+        if self.higher_is_better:
+            self.best_score = -np.inf
+        else:
+            self.best_score = np.inf
         self.best_step = 0
         self.patience = 0
 
     def compare_scores(self, score, step):
-        if self.best_score < score:
+        if self.comparison_function(self.best_score, score):
             # Update the score
-            writelog("BestScoreHolder", "(best_score=%.02f, best_step=%d, patience=%d) => (%.02f, %d, %d)" % \
+            writelog("utils.BestScoreHolder", "(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
                     (self.best_score * self.scale, self.best_step, self.patience,
                      score * self.scale, step, 0))
             self.best_score = score
@@ -829,7 +842,7 @@ class BestScoreHolder(object):
             return True
         else:
             # Increment the patience
-            writelog("BestScoreHolder", "(best_score=%.02f, best_step=%d, patience=%d) => (%.02f, %d, %d)" % \
+            writelog("utils.BestScoreHolder", "(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
                     (self.best_score * self.scale, self.best_step, self.patience,
                      self.best_score * self.scale, self.best_step, self.patience+1))
             self.patience += 1
