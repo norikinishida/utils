@@ -811,9 +811,9 @@ class BestScoreHolder(object):
         self.higher_is_better = higher_is_better
 
         if higher_is_better:
-            self.comparison_function = lambda b_c: b_c[0] < b_c[1]
+            self.comparison_function = lambda best, cur: best < cur
         else:
-            self.comparison_function = lambda b_c: b_c[0] > b_c[1]
+            self.comparison_function = lambda best, cur: best > cur
 
         if higher_is_better:
             self.best_score = -np.inf
