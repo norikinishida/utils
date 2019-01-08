@@ -227,12 +227,14 @@ def read_vocab(path):
     :type path: str
     :rtype: dictionary of {str: int}
     """
+    begin_time = time.time()
     writelog("utils.read_vocab", "Loading a vocabulary from %s" % path)
     vocab = OrderedDict()
     for line in open(path):
         word, word_id, freq = line.strip().split("\t")
         vocab[word] = int(word_id)
-    writelog("utils.read_vocab", "Loaded the vocabulary.")
+    end_time = time.time()
+    writelog("utils.read_vocab", "Loaded. %f [sec.]" % (end_time - begin_time))
     writelog("utils.read_vocab", "Vocabulary size=%d" % len(vocab))
     return vocab
 
@@ -514,10 +516,10 @@ def read_word2vec(path, dim):
     """
     :type path: str
     :type dim: int
-    :rtype: dictionary of {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
     """
-    writelog("utils.read_word2vec", "Loading ...")
-    start_time = time.time()
+    writelog("utils.read_word2vec", "Loading pretrained word vectors from %s ..." % path)
+    begin_time = time.time()
 
     word2vec = {}
     with open(path) as f:
@@ -529,35 +531,38 @@ def read_word2vec(path, dim):
                 continue
             word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
 
-    writelog("utils.read_word2vec", "Loaded. %f [sec.]" % (time.time() - start_time))
+    end_time = time.time()
+    writelog("utils.read_word2vec", "Loaded. %f [sec.]" % (end_time - begin_time))
+    writelog("utils.read_word2vec", "Vocabulary size=%d" % len(word2vec))
     return word2vec
 
 def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     """
-    :type vocab: dictionary of {word(str) -> ID(int)}
-    :type word2vec: dictionary of {word(str) -> vector(numpy.ndarray(float))}
+    :type vocab: {str -> int}
+    :type word2vec: {str -> numpy.ndarray(shape=(dim,), dtype=np.float32)}
     :type dim: int
     :type scale: float
-    :rtype: numpy.ndarray of shape (vocab_size, dim) and dtype=np.float32
+    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
     """
     writelog("utils.convert_word2vec_to_weight_matrix", "Converting ...")
-    start_time = time.time()
+    begin_time = time.time()
 
     task_vocab = list(vocab.keys())
     word2vec_vocab = list(word2vec.keys())
-    common_vocab = set(task_vocab) & set(word2vec_vocab)
-    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary in the task=%d" % len(task_vocab))
-    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary in the pre-trained embeddings=%d" % len(word2vec_vocab))
-    writelog("utils.convert_word2vec_to_weight_matrix", "# of pre-trained word types in the task=%d (%d/%d = %.2f%%)" % \
-            (len(common_vocab), len(common_vocab), len(task_vocab),
-                float(len(common_vocab))/len(task_vocab)*100.0))
+    shared_vocab = set(task_vocab) & set(word2vec_vocab)
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (task)=%d" % len(task_vocab))
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (word2vec)=%d" % len(word2vec_vocab))
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (shared)=%d (|shared|/|task|=%d/%d=%.2f%%)" % \
+            (len(shared_vocab), len(shared_vocab), len(task_vocab),
+                float(len(shared_vocab))/len(task_vocab)*100.0))
 
     # NOTE: If we fix the word vectors, we should use the same random seed for initializing the out-of-vocabulary words.
     W = np.random.RandomState(1234).uniform(-scale, scale, (len(task_vocab), dim)).astype(np.float32)
-    for w in common_vocab:
+    for w in shared_vocab:
         W[vocab[w], :] = word2vec[w]
 
-    writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (time.time() - start_time))
+    end_time = time.time()
+    writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (end_time - begin_time))
     return W
 
 ############################
@@ -699,6 +704,7 @@ class DataPool(object):
         self._pool_attr_names = ["pool_%d" % path_i for path_i in range(len(self.paths))]
 
         # Count the number of lines in the text files
+        writelog("utils.DataPool", "Counting the number of lines in the text files ...")
         self._n_lines = None
         for path in self.paths:
             # Count
