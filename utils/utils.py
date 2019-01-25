@@ -383,290 +383,40 @@ def compare_dictionary_keys(dict1, dict2):
         False
 
 ############################
-# Functions/Classes for analysis
+# Functions/Classes for distance calculation
 
-def get_word_counter(path):
+def levenshtein_distance(seq1, seq2):
     """
-    :type path: str
-    :type process: function
+    :type seq1: list of Any
+    :type seq2: list of Any
+    :rtype: float
     """
-    counter = Counter()
+    length1 = len(seq1)
+    length2 = len(seq2)
 
-    for line in open(path):
-        tokens = line.strip().split()
-        counter.update(tokens)
+    table = np.zeros((length1 + 1, length2 + 1))
 
-    return counter
+    # Base case
+    for i1 in range(length1 + 1):
+        table[i1, 0] = i1
+    for i2 in range(length2 + 1):
+        table[0, i2] = i2
 
-def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
-    """
-    :type path_dir: str
-    :type top_k: int
-    :type process: function
-    :rtype: None
-    """
-    filenames = os.listdir(path_dir)
+    # General case
+    for i1 in range(1, length1 + 1):
+        for i2 in range(1, length2 + 1):
+            if seq1[i1 - 1] == seq2[i2 - 1]:
+                cost = 0.0
+            else:
+                cost = 1.0
+            table[i1, i2] = min(table[i1-1, i2] + 1.0, # Insertion
+                                table[i1, i2-1] + 1.0, # Deletion
+                                table[i1-1, i2-1] + cost) # Replacement/Nothing
 
-    stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
-
-    counter = Counter()
-    for filename in filenames:
-        c = get_word_counter(os.path.join(path_dir, filename))
-        counter.update(c)
-    counter = counter.most_common()
-    counter = counter[:1000]
-
-    # Filtering stopwords
-    counter = [(w, freq) for w, freq in counter if not w in stopwords]
-
-    for k in range(min(top_k, len(counter))):
-        w, freq = counter[k]
-        writelog("utils.check_word_stats", "word=%s, frequency=%d" % (w, freq))
-
-def calc_score_stats(filepaths, regex, names):
-    """
-    :type filepaths: list of str
-    :type regex: str
-    :type names: list of str
-    :rtype: Pandas.DataFrame
-    """
-    data = {name: [] for name in names} # {str: list of float}
-    for filepath in filepaths:
-        scores = extract_values_with_regex(filepath, regex, names) # {str: list of str}
-        for name in names:
-            assert len(scores[name]) == 1
-            score = float(scores[name][0])
-            data[name].append(score)
-
-    for name in names:
-        data[name] = np.asarray(data[name])
-
-    df_data = OrderedDict()
-    def _calc_stats(xs):
-        return xs.tolist() + [np.mean(xs), np.std(xs), np.max(xs), np.min(xs)]
-    for name in names:
-        df_data[name] = _calc_stats(data[name])
-    df = pd.DataFrame(df_data, index=[os.path.basename(filepath) for filepath in filepaths] + ["mean", "std", "max", "min"])
-    pd.options.display.float_format = "{:,.1f}".format
-    return df
-
-def plot_given_files(
-        filepaths, regex,
-        xticks, xlabel, ylabels,
-        legend_names, legend_anchor, legend_location,
-        marker="o", linestyle="-", markersize=10,
-        fontsize=30,
-        savepaths=None, figsize=(8,6), dpi=100):
-    """
-    :type filepaths: list of str
-    :type regex: str
-    :type xticks: list of str
-    :type xlabel: str
-    :type ylabels: list of str
-    :type legend_names: list of str
-    :type legend_anchor: (int, int)
-    :type legend_location: str
-    :type marker: str
-    :type linestyle: str
-    :type markersize: int
-    :type fontsize: int
-    :type savepaths: list of str
-    :type figsize: (int, int)
-    :type dpi: int
-    :rtype: None
-    """
-    assert len(filepaths) == len(legend_names)
-
-    # Extraction
-    data = {ylabel: [] for ylabel in ylabels} # {str: list of list of float}
-    for filepath in filepaths:
-        scores = extract_values_with_regex(filepath, regex, ylabels) # {str: list of str}
-        for ylabel in ylabels:
-            data[ylabel].append([float(x) for x in scores[ylabel]])
-
-    if savepaths is None:
-        savepaths = [None for _ in range(len(ylabels))]
-
-    for ylabel, savepath in zip(ylabels, savepaths):
-        visualizers.plot(
-                    list_ys=data[ylabel], list_xs=None,
-                    xticks=xticks, xlabel=xlabel, ylabel=ylabel,
-                    legend_names=legend_names,
-                    legend_anchor=legend_anchor, legend_location=legend_location,
-                    marker=marker, linestyle=linestyle, markersize=markersize,
-                    fontsize=fontsize,
-                    savepath=savepath, figsize=figsize, dpi=dpi)
+    return table[length1, length2]
 
 ############################
-# Functions/Classes for loading pre-trained word vectors
-
-def read_word_embedding_matrix(path, dim, vocab, scale):
-    """
-    :type path: str
-    :type dim: int
-    :type vocab: dictionary of {str: int}
-    :type scale: float
-    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
-    """
-    word2vec = read_word2vec(path, dim)
-    W = convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale)
-    return W
-
-def read_word2vec(path, dim):
-    """
-    :type path: str
-    :type dim: int
-    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
-    """
-    writelog("utils.read_word2vec", "Loading pretrained word vectors from %s ..." % path)
-    begin_time = time.time()
-
-    word2vec = {}
-    with open(path) as f:
-        for line_i, line in enumerate(f):
-            items = line.strip().split()
-            if len(items[1:]) != dim:
-                writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped line %d" % \
-                    (len(items[1:]), dim, line_i+1))
-                continue
-            word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
-
-    end_time = time.time()
-    writelog("utils.read_word2vec", "Loaded. %f [sec.]" % (end_time - begin_time))
-    writelog("utils.read_word2vec", "Vocabulary size=%d" % len(word2vec))
-    return word2vec
-
-def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
-    """
-    :type vocab: {str -> int}
-    :type word2vec: {str -> numpy.ndarray(shape=(dim,), dtype=np.float32)}
-    :type dim: int
-    :type scale: float
-    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
-    """
-    writelog("utils.convert_word2vec_to_weight_matrix", "Converting ...")
-    begin_time = time.time()
-
-    task_vocab = list(vocab.keys())
-    word2vec_vocab = list(word2vec.keys())
-    shared_vocab = set(task_vocab) & set(word2vec_vocab)
-    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (task)=%d" % len(task_vocab))
-    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (word2vec)=%d" % len(word2vec_vocab))
-    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (shared)=%d (|shared|/|task|=%d/%d=%.2f%%)" % \
-            (len(shared_vocab), len(shared_vocab), len(task_vocab),
-                float(len(shared_vocab))/len(task_vocab)*100.0))
-
-    # NOTE: If we fix the word vectors, we should use the same random seed for initializing the out-of-vocabulary words.
-    W = np.random.RandomState(1234).uniform(-scale, scale, (len(task_vocab), dim)).astype(np.float32)
-    for w in shared_vocab:
-        W[vocab[w], :] = word2vec[w]
-
-    end_time = time.time()
-    writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (end_time - begin_time))
-    return W
-
-############################
-# Functions/Classes for bag-of-word models
-
-class BoW(object):
-
-    def __init__(self, documents, tfidf):
-        """
-        :type documents: list of list of str
-        :type tfidf: bool
-        :rtype: None
-        """
-        self.tfidf = tfidf
-
-        if not tfidf:
-            self.vectorizer = CountVectorizer()
-        else:
-            self.vectorizer = TfidfVectorizer()
-
-        self.vectorizer.fit_transform([" ".join(d) for d in documents])
-
-        vocab_words = self.vectorizer.get_feature_names()
-        self.vocab = {w:i for i,w in enumerate(vocab_words)}
-
-    def forward(self, documents):
-        """
-        :type documents: list of list of str
-        :rtype: numpy.ndarray(shape=(N,|V|), dtype=np.float32)
-        """
-        X = self.vectorizer.transform([" ".join(d) for d in documents])
-        return X.toarray().astype(np.float32)
-
-############################
-# Functions/Classes for neural network models (using Chainer)
-
-def transform_words(xs):
-    """
-    :type xs: list of list(len=L) of int
-    :rtype: list of Variable(shape=(L,))
-    """
-    xs = [np.asarray(x, dtype=np.int32) for x in xs]
-    xs = [Variable(cuda.cupy.asarray(x)) for x in xs]
-    return xs
-
-def padding(xs, head, with_mask):
-    """
-    :type xs: list of list of int
-    :type head: bool
-    :type with_mask: bool
-    :rtype: numpy.ndarray(shape=(N, max_length)), numpy.ndarray(shape(N, max_length))
-    """
-    N = len(xs)
-    max_length = max([len(x) for x in xs])
-    ys = np.zeros((N, max_length), dtype=np.int32)
-    if head:
-        for i in range(N):
-            l = len(xs[i])
-            ys[i, 0:l] = xs[i]
-            ys[i, l:] = -1
-    else:
-        for i in range(N):
-            l = len(xs[i])
-            ys[i, 0:max_length-l] = -1
-            ys[i, max_length-l:] = xs[i]
-    if with_mask:
-        ms = np.greater(ys, -1).astype(np.float32)
-        return ys, ms
-    else:
-        return ys
-
-def convert_ndarray_to_variable(xs, seq):
-    """
-    :type xs: numpy.ndarray(shape=(N, L))
-    :type seq: bool
-    :rtype: list(len=L) of Variable(shape=(N,)), or Variable(shape=(N, L))
-    """
-    if seq:
-        return [Variable(cuda.cupy.asarray(xs[:,j]))
-                for j in range(xs.shape[1])]
-    else:
-        return Variable(cuda.cupy.asarray(xs))
-
-def get_optimizer(name="smorms3"):
-    """
-    :type name: str
-    :rtype: chainer.Optimizer
-    """
-    if name == "adadelta":
-        opt = optimizers.AdaDelta()
-    elif name == "adagrad":
-        opt = optimizers.AdaGrad()
-    elif name == "adam":
-        opt = optimizers.Adam()
-    elif name == "rmsprop":
-        opt = optimizers.RMSprop()
-    elif name == "smorms3":
-        opt = optimizers.SMORMS3()
-    else:
-        raise ValueError("Unknown optimizer_name=%s" % name)
-    return opt
-
-############################
-# Functions/Classes for model training
+# Functions/Classes for data processing
 
 class DataBatch(object):
 
@@ -804,6 +554,177 @@ class DataPool(object):
             line_i += 1
         return output
 
+############################
+# Functions/Classes for pre-trained word embeddings
+
+def read_word_embedding_matrix(path, dim, vocab, scale):
+    """
+    :type path: str
+    :type dim: int
+    :type vocab: dictionary of {str: int}
+    :type scale: float
+    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
+    """
+    word2vec = read_word2vec(path, dim)
+    W = convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale)
+    return W
+
+def read_word2vec(path, dim):
+    """
+    :type path: str
+    :type dim: int
+    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    """
+    writelog("utils.read_word2vec", "Loading pretrained word vectors from %s ..." % path)
+    begin_time = time.time()
+
+    word2vec = {}
+    with open(path) as f:
+        for line_i, line in enumerate(f):
+            items = line.strip().split()
+            if len(items[1:]) != dim:
+                writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped line %d" % \
+                    (len(items[1:]), dim, line_i+1))
+                continue
+            word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
+
+    end_time = time.time()
+    writelog("utils.read_word2vec", "Loaded. %f [sec.]" % (end_time - begin_time))
+    writelog("utils.read_word2vec", "Vocabulary size=%d" % len(word2vec))
+    return word2vec
+
+def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
+    """
+    :type vocab: {str -> int}
+    :type word2vec: {str -> numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    :type dim: int
+    :type scale: float
+    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
+    """
+    writelog("utils.convert_word2vec_to_weight_matrix", "Converting ...")
+    begin_time = time.time()
+
+    task_vocab = list(vocab.keys())
+    word2vec_vocab = list(word2vec.keys())
+    shared_vocab = set(task_vocab) & set(word2vec_vocab)
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (task)=%d" % len(task_vocab))
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (word2vec)=%d" % len(word2vec_vocab))
+    writelog("utils.convert_word2vec_to_weight_matrix", "Vocabulary size (shared)=%d (|shared|/|task|=%d/%d=%.2f%%)" % \
+            (len(shared_vocab), len(shared_vocab), len(task_vocab),
+                float(len(shared_vocab))/len(task_vocab)*100.0))
+
+    # NOTE: If we fix the word vectors, we should use the same random seed for initializing the out-of-vocabulary words.
+    W = np.random.RandomState(1234).uniform(-scale, scale, (len(task_vocab), dim)).astype(np.float32)
+    for w in shared_vocab:
+        W[vocab[w], :] = word2vec[w]
+
+    end_time = time.time()
+    writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (end_time - begin_time))
+    return W
+
+############################
+# Functions/Classes for bag-of-word models
+
+class BoW(object):
+
+    def __init__(self, documents, tfidf):
+        """
+        :type documents: list of list of str
+        :type tfidf: bool
+        :rtype: None
+        """
+        self.tfidf = tfidf
+
+        if not tfidf:
+            self.vectorizer = CountVectorizer()
+        else:
+            self.vectorizer = TfidfVectorizer()
+
+        self.vectorizer.fit_transform([" ".join(d) for d in documents])
+
+        vocab_words = self.vectorizer.get_feature_names()
+        self.vocab = {w:i for i,w in enumerate(vocab_words)}
+
+    def forward(self, documents):
+        """
+        :type documents: list of list of str
+        :rtype: numpy.ndarray(shape=(N,|V|), dtype=np.float32)
+        """
+        X = self.vectorizer.transform([" ".join(d) for d in documents])
+        return X.toarray().astype(np.float32)
+
+############################
+# Functions/Classes for neural network models (using Chainer)
+
+def transform_words(xs):
+    """
+    :type xs: list of list(len=L) of int
+    :rtype: list of Variable(shape=(L,), dtype=np.int32)
+    """
+    xs = [np.asarray(x, dtype=np.int32) for x in xs]
+    xs = [Variable(cuda.cupy.asarray(x)) for x in xs]
+    return xs
+
+def padding(xs, head, with_mask):
+    """
+    :type xs: list of list of int
+    :type head: bool
+    :type with_mask: bool
+    :rtype: numpy.ndarray(shape=(N, max_length)), numpy.ndarray(shape(N, max_length))
+    """
+    N = len(xs)
+    max_length = max([len(x) for x in xs])
+    ys = np.zeros((N, max_length), dtype=np.int32)
+    if head:
+        for i in range(N):
+            l = len(xs[i])
+            ys[i, 0:l] = xs[i]
+            ys[i, l:] = -1
+    else:
+        for i in range(N):
+            l = len(xs[i])
+            ys[i, 0:max_length-l] = -1
+            ys[i, max_length-l:] = xs[i]
+    if with_mask:
+        ms = np.greater(ys, -1).astype(np.float32)
+        return ys, ms
+    else:
+        return ys
+
+def convert_ndarray_to_variable(xs, seq):
+    """
+    :type xs: numpy.ndarray(shape=(N, L))
+    :type seq: bool
+    :rtype: list(len=L) of Variable(shape=(N,)), or Variable(shape=(N, L))
+    """
+    if seq:
+        return [Variable(cuda.cupy.asarray(xs[:,j]))
+                for j in range(xs.shape[1])]
+    else:
+        return Variable(cuda.cupy.asarray(xs))
+
+def get_optimizer(name="smorms3"):
+    """
+    :type name: str
+    :rtype: chainer.Optimizer
+    """
+    if name == "adadelta":
+        opt = optimizers.AdaDelta()
+    elif name == "adagrad":
+        opt = optimizers.AdaGrad()
+    elif name == "adam":
+        opt = optimizers.Adam()
+    elif name == "rmsprop":
+        opt = optimizers.RMSprop()
+    elif name == "smorms3":
+        opt = optimizers.SMORMS3()
+    else:
+        raise ValueError("Unknown optimizer_name=%s" % name)
+    return opt
+
+############################
+# Functions/Classes for machine learning training
+
 class BestScoreHolder(object):
 
     def __init__(self, scale=1.0, higher_is_better=True):
@@ -853,4 +774,120 @@ class BestScoreHolder(object):
             return True
         else:
             return False
+
+############################
+# Functions/Classes for analysis
+
+def get_word_counter(path):
+    """
+    :type path: str
+    :type process: function
+    """
+    counter = Counter()
+
+    for line in open(path):
+        tokens = line.strip().split()
+        counter.update(tokens)
+
+    return counter
+
+def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
+    """
+    :type path_dir: str
+    :type top_k: int
+    :type process: function
+    :rtype: None
+    """
+    filenames = os.listdir(path_dir)
+
+    stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+
+    counter = Counter()
+    for filename in filenames:
+        c = get_word_counter(os.path.join(path_dir, filename))
+        counter.update(c)
+    counter = counter.most_common()
+    counter = counter[:1000]
+
+    # Filtering stopwords
+    counter = [(w, freq) for w, freq in counter if not w in stopwords]
+
+    for k in range(min(top_k, len(counter))):
+        w, freq = counter[k]
+        writelog("utils.check_word_stats", "word=%s, frequency=%d" % (w, freq))
+
+def calc_score_stats(filepaths, regex, names):
+    """
+    :type filepaths: list of str
+    :type regex: str
+    :type names: list of str
+    :rtype: Pandas.DataFrame
+    """
+    data = {name: [] for name in names} # {str: list of float}
+    for filepath in filepaths:
+        scores = extract_values_with_regex(filepath, regex, names) # {str: list of str}
+        for name in names:
+            assert len(scores[name]) == 1
+            score = float(scores[name][0])
+            data[name].append(score)
+
+    for name in names:
+        data[name] = np.asarray(data[name])
+
+    df_data = OrderedDict()
+    def _calc_stats(xs):
+        return xs.tolist() + [np.mean(xs), np.std(xs), np.max(xs), np.min(xs)]
+    for name in names:
+        df_data[name] = _calc_stats(data[name])
+    df = pd.DataFrame(df_data, index=[os.path.basename(filepath) for filepath in filepaths] + ["mean", "std", "max", "min"])
+    pd.options.display.float_format = "{:,.1f}".format
+    return df
+
+def plot_given_files(
+        filepaths, regex,
+        xticks, xlabel, ylabels,
+        legend_names, legend_anchor, legend_location,
+        marker="o", linestyle="-", markersize=10,
+        fontsize=30,
+        savepaths=None, figsize=(8,6), dpi=100):
+    """
+    :type filepaths: list of str
+    :type regex: str
+    :type xticks: list of str
+    :type xlabel: str
+    :type ylabels: list of str
+    :type legend_names: list of str
+    :type legend_anchor: (int, int)
+    :type legend_location: str
+    :type marker: str
+    :type linestyle: str
+    :type markersize: int
+    :type fontsize: int
+    :type savepaths: list of str
+    :type figsize: (int, int)
+    :type dpi: int
+    :rtype: None
+    """
+    assert len(filepaths) == len(legend_names)
+
+    # Extraction
+    data = {ylabel: [] for ylabel in ylabels} # {str: list of list of float}
+    for filepath in filepaths:
+        scores = extract_values_with_regex(filepath, regex, ylabels) # {str: list of str}
+        for ylabel in ylabels:
+            data[ylabel].append([float(x) for x in scores[ylabel]])
+
+    if savepaths is None:
+        savepaths = [None for _ in range(len(ylabels))]
+
+    for ylabel, savepath in zip(ylabels, savepaths):
+        visualizers.plot(
+                    list_ys=data[ylabel], list_xs=None,
+                    xticks=xticks, xlabel=xlabel, ylabel=ylabel,
+                    legend_names=legend_names,
+                    legend_anchor=legend_anchor, legend_location=legend_location,
+                    marker=marker, linestyle=linestyle, markersize=markersize,
+                    fontsize=fontsize,
+                    savepath=savepath, figsize=figsize, dpi=dpi)
+
 
