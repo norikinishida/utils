@@ -292,7 +292,7 @@ def write_vectors(path, vectors):
 def read_conll(path):
     """
     :type path: str
-    :rtype: list of list of str
+    :rtype: list of list of list of str
     """
     sentences = []
 
@@ -313,7 +313,7 @@ def read_conll(path):
 def write_conll(path, sentences):
     """
     :type path: str
-    :type sentences: list of list of str
+    :type sentences: list of list of list of str
     :rtype: None
     """
     with open(path, "w") as f:
