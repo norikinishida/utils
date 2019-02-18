@@ -305,12 +305,7 @@ def read_conll(path):
                 sentence = []
             continue
         items = line.split("\t")
-        token = items[1].replace("\xa0", " ").split(" ")
-        if len(token) != 1:
-            sentence.append(items[0:1] + [token[0]] + items[2:])
-            sentence.append(items[0:1] + [token[1]] + items[2:])
-        else:
-            sentence.append(items)
+        sentence.append(items)
     if sentence:
         sentences.append(sentence)
     return sentences
