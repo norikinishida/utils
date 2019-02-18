@@ -555,6 +555,49 @@ class DataPool(object):
         return output
 
 ############################
+# Functions/Classes for basic feature vectors
+
+def make_multihot_vectors(dim, fire):
+    """
+    :type dim: int
+    :type fire: list of list of int
+    :rtype: numpy.ndarray(shape=(N, dim), dtype=np.float32)
+    """
+    n_instances = len(fire)
+    vectors = np.zeros((n_instances, dim), dtype=np.float32)
+    for instance_i in range(n_instances):
+        vectors[instance_i, fire[instance_i]] = 1.0
+    return vectors
+
+class BoW(object):
+
+    def __init__(self, documents, tfidf):
+        """
+        :type documents: list of list of str
+        :type tfidf: bool
+        :rtype: None
+        """
+        self.tfidf = tfidf
+
+        if not tfidf:
+            self.vectorizer = CountVectorizer()
+        else:
+            self.vectorizer = TfidfVectorizer()
+
+        self.vectorizer.fit_transform([" ".join(d) for d in documents])
+
+        vocab_words = self.vectorizer.get_feature_names()
+        self.vocab = {w:i for i,w in enumerate(vocab_words)}
+
+    def forward(self, documents):
+        """
+        :type documents: list of list of str
+        :rtype: numpy.ndarray(shape=(N,|V|), dtype=np.float32)
+        """
+        X = self.vectorizer.transform([" ".join(d) for d in documents])
+        return X.toarray().astype(np.float32)
+
+############################
 # Functions/Classes for pre-trained word embeddings
 
 def read_word_embedding_matrix(path, dim, vocab, scale):
@@ -583,8 +626,8 @@ def read_word2vec(path, dim):
         for line_i, line in enumerate(f):
             items = line.strip().split()
             if len(items[1:]) != dim:
-                writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped line %d" % \
-                    (len(items[1:]), dim, line_i+1))
+                writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped %d-th line=%s..." % \
+                        (len(items[1:]), dim, line_i+1, ",".join(items[:10])))
                 continue
             word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
 
@@ -621,37 +664,6 @@ def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     end_time = time.time()
     writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (end_time - begin_time))
     return W
-
-############################
-# Functions/Classes for bag-of-word models
-
-class BoW(object):
-
-    def __init__(self, documents, tfidf):
-        """
-        :type documents: list of list of str
-        :type tfidf: bool
-        :rtype: None
-        """
-        self.tfidf = tfidf
-
-        if not tfidf:
-            self.vectorizer = CountVectorizer()
-        else:
-            self.vectorizer = TfidfVectorizer()
-
-        self.vectorizer.fit_transform([" ".join(d) for d in documents])
-
-        vocab_words = self.vectorizer.get_feature_names()
-        self.vocab = {w:i for i,w in enumerate(vocab_words)}
-
-    def forward(self, documents):
-        """
-        :type documents: list of list of str
-        :rtype: numpy.ndarray(shape=(N,|V|), dtype=np.float32)
-        """
-        X = self.vectorizer.transform([" ".join(d) for d in documents])
-        return X.toarray().astype(np.float32)
 
 ############################
 # Functions/Classes for neural network models (using Chainer)
