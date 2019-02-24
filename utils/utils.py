@@ -289,12 +289,45 @@ def write_vectors(path, vectors):
             vector = " ".join(vector)
             f.write("%s\n" % vector)
 
-def read_conll(path):
+def get_conll_keys(format_name):
+    """
+    :type format_name: str
+    :rtype: list of str
+    """
+    if format_name == "conllx":
+        keys = ["ID",
+                "FORM", "LEMMA",
+                "CPOSTAG", "POSTAG",
+                "FEATS",
+                "HEAD", "DEPREL", "PHEAD", "PDEPREL"]
+        assert len(keys) == 10
+    elif format_name == "conllu":
+        keys = ["ID",
+                "FORM", "LEMMA",
+                "UPOS", "XPOS",
+                "FEATS",
+                "HEAD", "DEPREL", "DEPS", "MISC"]
+        assert len(keys) == 10
+    else:
+        raise ValueError("Invalid format_name=%s" % format_name)
+    return keys
+
+def read_conll(path, keys=None, format_name=None):
     """
     :type path: str
-    :rtype: list of list of list of str
+    :type keys: list of str
+    :type format_name: str
+    :rtype: list of list of {str: str}
     """
     sentences = []
+
+    if keys is None:
+        assert format_name is not None
+        keys = get_conll_keys(format_name=format_name)
+    else:
+        assert format_name is None
+
+    n_items = len(keys)
 
     sentence = []
     for line in open(path):
@@ -305,7 +338,9 @@ def read_conll(path):
                 sentence = []
             continue
         items = line.split("\t")
-        sentence.append(items)
+        assert len(items) == n_items
+        conll_line = {key:item for key,item in zip(keys, items)}
+        sentence.append(conll_line)
     if sentence:
         sentences.append(sentence)
     return sentences
@@ -313,12 +348,13 @@ def read_conll(path):
 def write_conll(path, sentences):
     """
     :type path: str
-    :type sentences: list of list of list of str
+    :type sentences: list of list of {str: str}
     :rtype: None
     """
     with open(path, "w") as f:
         for sentence in sentences:
-            for items in sentence:
+            for conll_line in sentence:
+                items = [conll_line[key] for key in conll_line.keys()]
                 f.write("\t".join(items) + "\n")
             f.write("\n")
 
@@ -343,7 +379,19 @@ def extract_values_with_regex(filepath, regex, names):
                 values[names[index]].append(match[index])
     return values
 
+def print_list(lst):
+    """
+    :type lst: list of Any
+    :rtype: None
+    """
+    for x in lst:
+        print(x)
+
 def print_dict(dictionary):
+    """
+    :type dictionary: {Any: Any}
+    :rtype: None
+    """
     for key in dictionary.keys():
         print("%s: %s" % (key, dictionary[key]))
 
