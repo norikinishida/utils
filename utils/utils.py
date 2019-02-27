@@ -838,16 +838,25 @@ class BestScoreHolder(object):
 ############################
 # Functions/Classes for analysis
 
-def get_word_counter(path):
+def get_word_counter(path=None, lines=None):
     """
     :type path: str
+    :type lines: list of list of str
     :type process: function
     """
     counter = Counter()
 
-    for line in open(path):
-        tokens = line.strip().split()
-        counter.update(tokens)
+    if path is not None:
+        assert lines is None
+        for line in open(path):
+            tokens = line.strip().split()
+            counter.update(tokens)
+    elif lines is not None:
+        assert path is None
+        for tokens in lines:
+            counter.update(tokens)
+    else:
+        raise ValueError("Both ``path'' and ``lines'' are None.")
 
     return counter
 
@@ -864,7 +873,7 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
 
     counter = Counter()
     for filename in filenames:
-        c = get_word_counter(os.path.join(path_dir, filename))
+        c = get_word_counter(path=os.path.join(path_dir, filename))
         counter.update(c)
     counter = counter.most_common()
     counter = counter[:1000]
