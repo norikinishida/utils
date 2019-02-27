@@ -289,43 +289,16 @@ def write_vectors(path, vectors):
             vector = " ".join(vector)
             f.write("%s\n" % vector)
 
-def get_conll_keys(format_name):
-    """
-    :type format_name: str
-    :rtype: list of str
-    """
-    if format_name == "conllx":
-        keys = ["ID",
-                "FORM", "LEMMA",
-                "CPOSTAG", "POSTAG",
-                "FEATS",
-                "HEAD", "DEPREL", "PHEAD", "PDEPREL"]
-        assert len(keys) == 10
-    elif format_name == "conllu":
-        keys = ["ID",
-                "FORM", "LEMMA",
-                "UPOS", "XPOS",
-                "FEATS",
-                "HEAD", "DEPREL", "DEPS", "MISC"]
-        assert len(keys) == 10
-    else:
-        raise ValueError("Invalid format_name=%s" % format_name)
-    return keys
-
-def read_conll(path, keys=None, format_name=None):
+def read_conll(path, keys):
     """
     :type path: str
     :type keys: list of str
-    :type format_name: str
     :rtype: list of list of {str: str}
+
+    CoNLL-X: ID FORM LEMMA CPOSTAG POSTAG FEATS HEAD DEPREL PHEAD PDEPREL
+    CoNLL-U: ID FORM LEMMA UPOS    XPOS   FEATS HEAD DEPREL DEPS  MISC
     """
     sentences = []
-
-    if keys is None:
-        assert format_name is not None
-        keys = get_conll_keys(format_name=format_name)
-    else:
-        assert format_name is None
 
     n_items = len(keys)
 
@@ -357,6 +330,68 @@ def write_conll(path, sentences):
                 items = [conll_line[key] for key in conll_line.keys()]
                 f.write("\t".join(items) + "\n")
             f.write("\n")
+
+def convert_conll_to_linebyline_format(path_conll, keys, ID, FORM, POSTAG, HEAD, DEPREL):
+    """
+    :type path_conll: str
+    :type keys: list of str
+    :type ID: str
+    :type FORM: str
+    :type POSTAG: str
+    :type HEAD: str
+    :type DEPREL: str
+    :rtype: list of str, list of str, list of (int, int, str)
+    """
+    assert ID in keys
+    assert FORM in keys
+    assert POSTAG in keys
+    assert HEAD in keys
+    assert DEPREL in keys
+
+    batch_tokens = []
+    batch_postags = []
+    batch_arcs = []
+
+    n_items = len(keys)
+
+    # Init
+    tokens = []
+    postags = []
+    arcs = []
+
+    for line in open(path_conll):
+        line = line.strip()
+        if line == "":
+            if len(tokens) == 0:
+                continue
+            batch_tokens.append(tokens)
+            batch_postags.append(postags)
+            batch_arcs.append(arcs)
+            # Init
+            tokens = []
+            postags = []
+            arcs = []
+        else:
+            items = line.split("\t")
+            assert len(items) == n_items
+            conll_line = {key:item for key,item in zip(keys, items)}
+
+            dep_index = int(conll_line[ID])
+            token = conll_line[FORM]
+            postag = conll_line[POSTAG]
+            head_index = int(conll_line[HEAD])
+            label = conll_line[DEPREL]
+
+            tokens.append(token)
+            postags.append(postag)
+            arcs.append((head_index, dep_index, label))
+
+    if len(tokens) != 0:
+        batch_tokens.append(tokens)
+        batch_postags.append(postags)
+        batch_arcs.append(arcs)
+
+    return batch_tokens, batch_postags, batch_arcs
 
 def extract_values_with_regex(filepath, regex, names):
     """
