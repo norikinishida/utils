@@ -238,6 +238,16 @@ def read_vocab(path):
     writelog("utils.read_vocab", "Vocabulary size=%d" % len(vocab))
     return vocab
 
+def write_vocab(path, data):
+    """
+    :type path: str
+    :type data: list of (str, int)
+    :rtype: None
+    """
+    with open(path, "w") as f:
+        for word_id, (word, freq) in enumerate(data):
+            f.write("%s\t%d\t%d\n" % (word, word_id, freq))
+
 def read_lines(path, process=lambda line: line):
     """
     :type path: str
@@ -288,6 +298,34 @@ def write_vectors(path, vectors):
             vector = [str(x) for x in vector]
             vector = " ".join(vector)
             f.write("%s\n" % vector)
+
+def read_dictionary(path, multivals=False, func_key=lambda x: x, func_val=lambda x: x):
+    """
+    :type path
+    :type multivals: bool
+    :type func_key: <str> -> <Any>
+    :type func_val: <str> -> <Any>
+    :rtype: {Any: Any}/{Any: list of Any}
+    """
+    d = {}
+    for line in open(path):
+        line = line.strip().split()
+        if multivals:
+            if len(line) == 2:
+                key, val = line
+                vals = [val]
+            else:
+                key = line[0]
+                vals = line[1:]
+            d[func_key(key)] = [func_val(val) for val in vals]
+        else:
+            if len(line) == 2:
+                key, val = line
+            else:
+                key = line[0]
+                val = " ".join(line[1:])
+            d[func_key(key)] = func_val(val)
+    return d
 
 def read_conll(path, keys):
     """
