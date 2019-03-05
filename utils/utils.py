@@ -982,7 +982,7 @@ def calc_score_stats(filepaths, regex, names):
     for name in names:
         df_data[name] = _calc_stats(data[name])
     df = pd.DataFrame(df_data, index=[os.path.basename(filepath) for filepath in filepaths] + ["mean", "std", "max", "min"])
-    pd.options.display.float_format = "{:,.1f}".format
+    pd.options.display.float_format = "{:,.2f}".format
     return df
 
 def plot_given_files(
