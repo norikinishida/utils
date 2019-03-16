@@ -225,7 +225,7 @@ def mkdir(path, newdir=None):
 def read_vocab(path):
     """
     :type path: str
-    :rtype: dictionary of {str: int}
+    :rtype: {str: int}
     """
     begin_time = time.time()
     writelog("utils.read_vocab", "Loading a vocabulary from %s" % path)
@@ -436,7 +436,7 @@ def extract_values_with_regex(filepath, regex, names):
     :type filepath: str
     :type regex: str
     :type names: list of str
-    :rtype: dictionary of {str: list of str}
+    :rtype: {str: list of str}
     """
     re_comp = re.compile(regex, re.I)
     values = {name: [] for name in names}
@@ -725,7 +725,7 @@ def read_word_embedding_matrix(path, dim, vocab, scale):
     """
     :type path: str
     :type dim: int
-    :type vocab: dictionary of {str: int}
+    :type vocab: {str: int}
     :type scale: float
     :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
     """
