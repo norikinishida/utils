@@ -452,6 +452,35 @@ def extract_values_with_regex(filepath, regex, names):
                 values[names[index]].append(match[index])
     return values
 
+def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals, func_key=lambda x: x, func_val=lambda x: x):
+    """
+    :type dictionary: {str: list of str}
+    :type key_of_keys: str
+    :type key_of_vals: str
+    :type func_key: <str> -> <Any>
+    :type func_val: <str> -> <Any>
+    :rtype: {Any: Any}
+
+    Example:
+    utils.transform_columnwisedict_to_rowwisedict(
+            dictionary={"ID": ["0", "1", "2"],
+                        "text": ["hello world", "colorless green ideas", "sleep furiously"]},
+            key_of_keys="ID",
+            key_of_vals="text",
+            func_key=lambda x: int(x),
+            func_val=lambda x: x.split())
+    => {0: ["hello", "world"],
+        1: ["colorless", "green", "ideas"],
+        2: ["sleep", "furiously"]}
+    """
+    new_dictionary = {}
+    for raw_key, raw_val in zip(dictionary[key_of_keys], dictionary[key_of_vals]):
+        # NOTE: raw_key(str), raw_val(str)
+        key = func_key(raw_key)
+        val = func_val(raw_val)
+        new_dictionary[key] = val
+    return new_dictionary
+
 def print_list(lst):
     """
     :type lst: list of Any
