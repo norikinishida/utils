@@ -532,6 +532,22 @@ def compare_dictionary_keys(dict1, dict2):
     else:
         False
 
+def random_replace_list(xs, ps, z):
+    """
+    :type xs: list of Any
+    :type ps: list of float
+    :type z: Any
+    :rtype: list of Any
+    """
+    N = len(xs)
+    if isinstance(ps, float):
+        ps = np.zeros((N,)) + ps
+    else:
+        assert len(ps) == N
+    rs = np.random.random((N,))
+    ys = [z if r < p else x for x,p,r in zip(xs,ps,rs)]
+    return ys
+
 ############################
 # Functions/Classes for distance calculation
 
@@ -571,11 +587,11 @@ def levenshtein_distance(seq1, seq2):
 class DataBatch(object):
 
     def __init__(self, **kargs):
-        self._attr_names = []
+        self.attr_names = []
         length = None
         for key, value in kargs.items():
             setattr(self, key, value)
-            self._attr_names.append(key)
+            self.attr_names.append(key)
             # Check
             if length is None:
                 length = len(value)
@@ -583,7 +599,24 @@ class DataBatch(object):
                 assert length == len(value)
 
     def __len__(self):
-        return len(getattr(self, self._attr_names[0]))
+        return len(getattr(self, self.attr_names[0]))
+
+def concat_databatch(databatch1, databatch2):
+    """
+    :type databatch1: DataBatch
+    :type databatch2: DataBatch
+    :rtype: DataBatch
+    """
+    assert len(set(databatch1.attr_names) - set(databatch1.attr_names) & set(databatch2.attr_names)) == 0
+    kargs = {}
+    for attr_name in databatch1.attr_names:
+        array1 = getattr(databatch1, attr_name)
+        array2 = getattr(databatch2, attr_name)
+        new_array = np.concatenate([array1, array2], axis=0)
+        assert len(new_array) == len(array1) + len(array2)
+        kargs[attr_name] = new_array
+    databatch = DataBatch(**kargs)
+    return databatch
 
 class DataPool(object):
 
