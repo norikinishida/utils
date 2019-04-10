@@ -750,14 +750,26 @@ class TemplateFeatureExtractor(object):
 
     ####################################
     def aggregate_templates(self, args):
+        """
+        :type args: Any
+        :rtype: list of str
+        """
         pass # NOTE: To be defined.
 
     def add_template(self, **kargs):
+        """
+        :type kargs: {str: str}
+        :rtype: None
+        """
         template = self.convert_to_template(**kargs)
         if not template in self.templates:
             self.templates.append(template)
 
     def convert_to_template(self, **kargs):
+        """
+        :type kargs: {str: str}
+        :rtype: str
+        """
         lst = ["%s=%s" % (key,val) for key,val in kargs.items()]
         lst = ",".join(lst)
         template = "<%s>" % lst
@@ -766,6 +778,9 @@ class TemplateFeatureExtractor(object):
 
     ####################################
     def prepare(self):
+        """
+        :rtype: None
+        """
         self.template2dim = {template:dim for dim,template in enumerate(self.templates)}
         self.feature_size = len(self.templates)
         self.UNK_TEMPLATE_DIM = self.feature_size
@@ -773,6 +788,10 @@ class TemplateFeatureExtractor(object):
 
     ####################################
     def extract_features(self, args):
+        """
+        :type args: Any
+        :rtype: numpy.ndarray(shape=(1, feature_size), dtype=np.float32)
+        """
         # NOTE: To be defined.
         templates = self.generate_templates(args=args)
         template_dims = [self.template2dim.get(t, self.UNK_TEMPLATE_DIM) for t in templates]
@@ -781,6 +800,10 @@ class TemplateFeatureExtractor(object):
         return vector
 
     def extract_batch_features(self, batch_args):
+        """
+        :type batch_args: Any
+        :rtype: numpy.ndarray(shape=(batch_size, feature_size), dtype=np.float32)
+        """
         # NOTE: To be defined.
         fire = [] # list of list of int
         batch_size = len(batch_args)
@@ -793,6 +816,10 @@ class TemplateFeatureExtractor(object):
         return vectors
 
     def generate_templates(self, args):
+        """
+        :type args: Any
+        :rtype: list of str
+        """
         pass # NOTE: To be defined.
     ####################################
 
