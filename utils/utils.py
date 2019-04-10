@@ -740,6 +740,62 @@ class DataPool(object):
 ############################
 # Functions/Classes for basic feature vectors
 
+class TemplateFeatureExtractor(object):
+
+    def __init__(self):
+        self.templates = [] # list of str
+        self.template2dim = None # {str: int}
+        self.feature_size = None # int
+        self.UNK_TEMPLATE_DIM = None # int
+
+    ####################################
+    def aggregate_templates(self, args):
+        pass # NOTE: To be defined.
+
+    def add_template(self, **kargs):
+        template = self.convert_to_template(**kargs)
+        if not template in self.templates:
+            self.templates.append(template)
+
+    def convert_to_template(self, **kargs):
+        lst = ["%s=%s" % (key,val) for key,val in kargs.items()]
+        lst = ",".join(lst)
+        template = "<%s>" % lst
+        return template
+    ####################################
+
+    ####################################
+    def prepare(self):
+        self.template2dim = {template:dim for dim,template in enumerate(self.templates)}
+        self.feature_size = len(self.templates)
+        self.UNK_TEMPLATE_DIM = self.feature_size
+    ####################################
+
+    ####################################
+    def extract_features(self, args):
+        # NOTE: To be defined.
+        templates = self.generate_templates(args=args)
+        template_dims = [self.template2dim.get(t, self.UNK_TEMPLATE_DIM) for t in templates]
+        vector = utils.make_multihot_vectors(self.feature_size+1, [template_dims]) # (1, feature_size+1)
+        vector = vector[:,:-1] # (1, feature_size)
+        return vector
+
+    def extract_batch_features(self, batch_args):
+        # NOTE: To be defined.
+        fire = [] # list of list of int
+        batch_size = len(batch_args)
+        for index, args in enumerate(batch_args):
+            templates = self.generate_templates(args=args)
+            template_dims = [self.template2dim.get(t, self.UNK_TEMPLATE_DIM) for t in templates]
+            fire.append(template_dims)
+        vectors = utils.make_multihot_vectors(self.feature_size+1, fire) # (batch_size, feature_size+1)
+        vectors = vectors[:,:-1] # (batch_size, feature_size)
+        return vectors
+
+    def generate_templates(self, args):
+        pass # NOTE: To be defined.
+    ####################################
+
 def make_multihot_vectors(dim, fire):
     """
     :type dim: int
