@@ -795,7 +795,7 @@ class TemplateFeatureExtractor(object):
         # NOTE: To be defined.
         templates = self.generate_templates(args=args)
         template_dims = [self.template2dim.get(t, self.UNK_TEMPLATE_DIM) for t in templates]
-        vector = utils.make_multihot_vectors(self.feature_size+1, [template_dims]) # (1, feature_size+1)
+        vector = make_multihot_vectors(self.feature_size+1, [template_dims]) # (1, feature_size+1)
         vector = vector[:,:-1] # (1, feature_size)
         return vector
 
@@ -806,12 +806,12 @@ class TemplateFeatureExtractor(object):
         """
         # NOTE: To be defined.
         fire = [] # list of list of int
-        batch_size = len(batch_args)
+        # batch_size = len(batch_args)
         for index, args in enumerate(batch_args):
             templates = self.generate_templates(args=args)
             template_dims = [self.template2dim.get(t, self.UNK_TEMPLATE_DIM) for t in templates]
             fire.append(template_dims)
-        vectors = utils.make_multihot_vectors(self.feature_size+1, fire) # (batch_size, feature_size+1)
+        vectors = make_multihot_vectors(self.feature_size+1, fire) # (batch_size, feature_size+1)
         vectors = vectors[:,:-1] # (batch_size, feature_size)
         return vectors
 
@@ -1110,23 +1110,27 @@ def calc_score_stats(filepaths, regex, names):
     :type names: list of str
     :rtype: Pandas.DataFrame
     """
-    data = {name: [] for name in names} # {str: list of float}
+    columns_raw = {name: [] for name in names} # {str: list of float}
     for filepath in filepaths:
         scores = extract_values_with_regex(filepath, regex, names) # {str: list of str}
         for name in names:
             assert len(scores[name]) == 1
             score = float(scores[name][0])
-            data[name].append(score)
+            columns_raw[name].append(score)
+    rows = [os.path.basename(filepath) for filepath in filepaths]
 
+    columns = OrderedDict()
     for name in names:
-        data[name] = np.asarray(data[name])
+        columns[name] = columns_raw[name] + [np.mean(columns_raw[name]), np.std(columns_raw[name])]
+    rows.extend(["mean", "std"])
 
-    df_data = OrderedDict()
-    def _calc_stats(xs):
-        return xs.tolist() + [np.mean(xs), np.std(xs), np.max(xs), np.min(xs)]
-    for name in names:
-        df_data[name] = _calc_stats(data[name])
-    df = pd.DataFrame(df_data, index=[os.path.basename(filepath) for filepath in filepaths] + ["mean", "std", "max", "min"])
+    for name1 in names:
+        max_index = np.argmax(columns_raw[name1])
+        for name2 in names:
+            columns[name2].append(columns_raw[name2][max_index])
+        rows.append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
+
+    df = pd.DataFrame(columns, index=rows)
     pd.options.display.float_format = "{:,.2f}".format
     return df
 
