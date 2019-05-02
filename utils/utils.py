@@ -1117,20 +1117,24 @@ def calc_score_stats(filepaths, regex, names):
             assert len(scores[name]) == 1
             score = float(scores[name][0])
             columns_raw[name].append(score)
-    rows = [os.path.basename(filepath) for filepath in filepaths]
+    # rows = [os.path.basename(filepath) for filepath in filepaths]
 
     columns = OrderedDict()
+    columns["Method"] = [os.path.basename(filepath) for filepath in filepaths]
     for name in names:
         columns[name] = columns_raw[name] + [np.mean(columns_raw[name]), np.std(columns_raw[name])]
-    rows.extend(["mean", "std"])
+    # rows.extend(["mean", "std"])
+    columns["Method"].extend(["mean", "std"])
 
     for name1 in names:
         max_index = np.argmax(columns_raw[name1])
         for name2 in names:
             columns[name2].append(columns_raw[name2][max_index])
-        rows.append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
+        # rows.append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
+        columns["Method"].append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
 
-    df = pd.DataFrame(columns, index=rows)
+    # df = pd.DataFrame(columns, index=rows)
+    df = pd.DataFrame(columns)
     pd.options.display.float_format = "{:,.2f}".format
     return df
 
