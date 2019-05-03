@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from chainer import cuda, optimizers, Variable
+import pyprind
 
 import visualizers
 
@@ -885,21 +886,38 @@ def read_word2vec(path, dim):
     :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
     """
     writelog("utils.read_word2vec", "Loading pretrained word vectors from %s ..." % path)
-    begin_time = time.time()
 
     word2vec = {}
+
+    # Prepara prog_bar
+    n_lines = 0
+    for _ in open(path):
+        n_lines += 1
+    prog_bar = pyprind.ProgBar(n_lines)
+
+    # Make a dictionary from word to vector
+    error_history = []
     with open(path) as f:
         for line_i, line in enumerate(f):
             items = line.strip().split()
             if len(items[1:]) != dim:
-                writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped %d-th line=%s..." % \
-                        (len(items[1:]), dim, line_i+1, ",".join(items[:10])))
+                error_history.append(
+                                {"dim_actual": len(items[1:]),
+                                 "line_id": line_i+1,
+                                 "line": ",".join(items[:10])}
+                                )
+                # writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped %d-th line=%s..." % \
+                #         (len(items[1:]), dim, line_i+1, ",".join(items[:10])))
                 continue
             word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
+            prog_bar.update()
 
-    end_time = time.time()
-    writelog("utils.read_word2vec", "Loaded. %f [sec.]" % (end_time - begin_time))
+    for err in error_history:
+        writelog("utils.read_word2vec", "dim %d(actual) != %d(expected), skipped %d-th line=%s ....." % \
+                    (err["dim_actual"], dim, err["line_id"], err["line"]))
+
     writelog("utils.read_word2vec", "Vocabulary size=%d" % len(word2vec))
+    writelog("utils.read_word2vec", "%s" % prog_bar)
     return word2vec
 
 def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
