@@ -608,9 +608,14 @@ def concat_databatch(databatch1, databatch2):
     :type databatch2: DataBatch
     :rtype: DataBatch
     """
-    assert len(set(databatch1.attr_names) - set(databatch1.attr_names) & set(databatch2.attr_names)) == 0
+    attr_names1 = set(databatch1.attr_names)
+    attr_names2 = set(databatch2.attr_names)
+    shared_attr_names = attr_names1 & attr_names2
+    shared_attr_names = list(shared_attr_names)
+    shared_attr_names.sort()
     kargs = {}
-    for attr_name in databatch1.attr_names:
+    for attr_i, attr_name in enumerate(shared_attr_names):
+        writelog("utils.concat_databatch", "Shared attribute #%d %s" % (attr_i+1, attr_name))
         array1 = getattr(databatch1, attr_name)
         array2 = getattr(databatch2, attr_name)
         new_array = np.concatenate([array1, array2], axis=0)
@@ -618,6 +623,28 @@ def concat_databatch(databatch1, databatch2):
         kargs[attr_name] = new_array
     databatch = DataBatch(**kargs)
     return databatch
+
+def filter_databatch(databatch, filtering_function):
+    """
+    :type databatch: DataBatch
+    :type filtering_function: function
+    :rtype: DataBatch
+    """
+    kargs = {}
+    for attr_name in databatch.attr_names:
+        kargs[attr_name] = []
+
+    for entry_i in range(len(databatch)):
+        do_filter = filtering_function(databatch, entry_i)
+        if not do_filter:
+            for attr_name in databatch.attr_names:
+                kargs[attr_name].append(getattr(databatch, attr_name)[entry_i])
+
+    for attr_name in databatch.attr_names:
+        kargs[attr_name] = np.asarray(kargs[attr_name], dtype="O")
+
+    new_databatch = DataBatch(**kargs)
+    return new_databatch
 
 class DataPool(object):
 
@@ -999,7 +1026,7 @@ def convert_ndarray_to_variable(xs, seq):
     else:
         return Variable(cuda.cupy.asarray(xs))
 
-def get_optimizer(name="smorms3"):
+def get_optimizer(name):
     """
     :type name: str
     :rtype: chainer.Optimizer
