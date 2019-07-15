@@ -482,13 +482,17 @@ def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals
         new_dictionary[key] = val
     return new_dictionary
 
-def print_list(lst):
+def print_list(lst, with_index=False):
     """
     :type lst: list of Any
+    :type with_index: bool
     :rtype: None
     """
-    for x in lst:
-        print(x)
+    for i, x in enumerate(lst):
+        if with_index:
+            print("%d:" % i, x)
+        else:
+            print(x)
 
 def print_dict(dictionary):
     """
