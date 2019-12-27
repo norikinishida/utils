@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import gensim
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from chainer import cuda, optimizers, Variable
 import pyprind
@@ -482,13 +483,16 @@ def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals
         new_dictionary[key] = val
     return new_dictionary
 
-def print_list(lst, with_index=False):
+def print_list(lst, with_index=False, process=None):
     """
     :type lst: list of Any
     :type with_index: bool
+    :type process: function
     :rtype: None
     """
     for i, x in enumerate(lst):
+        if process is not None:
+            x = process(x)
         if with_index:
             print("%d:" % i, x)
         else:
@@ -552,6 +556,16 @@ def random_replace_list(xs, ps, z):
     rs = np.random.random((N,))
     ys = [z if r < p else x for x,p,r in zip(xs,ps,rs)]
     return ys
+
+############################
+# Functions/Classes for mathematical calculation
+
+def normalize_vectors(mat):
+    """
+    :type mat: numpy.ndarray(shape=(batch,feat_dim))
+    :rtype: numpy.ndarray(shape=(batch,feat_dim))
+    """
+    return mat / np.linalg.norm(mat, axis=1)[:,None]
 
 ############################
 # Functions/Classes for distance calculation
@@ -895,6 +909,13 @@ class BoW(object):
         X = self.vectorizer.transform([" ".join(d) for d in documents])
         return X.toarray().astype(np.float32)
 
+def read_english_stopwords():
+    """
+    :rtype: list of str
+    """
+    stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+    return stopwords
+
 ############################
 # Functions/Classes for pre-trained word embeddings
 
@@ -979,6 +1000,26 @@ def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     end_time = time.time()
     writelog("utils.convert_word2vec_to_weight_matrix", "Converted. %f [sec.]" % (end_time - begin_time))
     return W
+
+def read_word2vec_using_gensim(path, binary):
+    """
+    :type path: str
+    :type binary: bool
+    :rtype: gensim.models.keyedvectors.Word2VecKeyedVectors
+    """
+    model = gensim.models.KeyedVectors.load_word2vec_format(path, binary=binary)
+    return model
+
+def keyedvectors2dict(model):
+    """
+    :type model: gensim.models.keyedvectors.Word2VecKeyedVectors
+    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    """
+    word2vec = {}
+    vocab = model.vocab
+    for word in vocab.keys():
+        word2vec[word] = model[word]
+    return word2vec
 
 ############################
 # Functions/Classes for neural network models (using Chainer)
@@ -1136,7 +1177,8 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
     """
     filenames = os.listdir(path_dir)
 
-    stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+    # stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+    stopwords = read_english_stopwords()
 
     counter = Counter()
     for filename in filenames:
