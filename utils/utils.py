@@ -17,8 +17,6 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from chainer import cuda, optimizers, Variable
 import pyprind
 
-import visualizers
-
 ###############################
 # Logging
 
@@ -449,27 +447,6 @@ def convert_conll_to_linebyline_format(path_conll, keys, ID, FORM, POSTAG, HEAD,
         batch_arcs.append(arcs)
 
     return batch_tokens, batch_postags, batch_arcs
-
-def extract_values_with_regex(filepath, regex, names):
-    """
-    :type filepath: str
-    :type regex: str
-    :type names: list of str
-    :rtype: {str: list of str}
-    """
-    re_comp = re.compile(regex, re.I)
-    values = {name: [] for name in names}
-    for line in open(filepath):
-        line = line.strip()
-        match = re_comp.findall(line)
-        if len(match) > 0:
-            match = match[0]
-            if not isinstance(match, tuple):
-                match = (match,)
-            assert len(match) == len(names)
-            for index in range(len(names)):
-                values[names[index]].append(match[index])
-    return values
 
 def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals, func_key=lambda x: x, func_val=lambda x: x):
     """
@@ -1218,86 +1195,110 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
         w, freq = counter[k]
         print("word=%s, frequency=%d" % (w, freq))
 
-def calc_score_stats(filepaths, regex, names):
+def extract_values_with_regex(filepath, regex, names):
     """
-    :type filepaths: list of str
+    :type filepath: str
     :type regex: str
     :type names: list of str
-    :rtype: Pandas.DataFrame
+    :rtype: {str: list of str}
     """
-    columns_raw = {name: [] for name in names} # {str: list of float}
-    for filepath in filepaths:
-        scores = extract_values_with_regex(filepath, regex, names) # {str: list of str}
-        for name in names:
-            assert len(scores[name]) == 1
-            score = float(scores[name][0])
-            columns_raw[name].append(score)
-    # rows = [os.path.basename(filepath) for filepath in filepaths]
+    re_comp = re.compile(regex, re.I)
+    values = {name: [] for name in names}
+    for line in open(filepath):
+        line = line.strip()
+        match = re_comp.findall(line)
+        if len(match) > 0:
+            match = match[0]
+            if not isinstance(match, tuple):
+                match = (match,)
+            assert len(match) == len(names)
+            for index in range(len(names)):
+                values[names[index]].append(match[index])
+    return values
 
-    columns = OrderedDict()
-    columns["Method"] = [os.path.basename(filepath) for filepath in filepaths]
-    for name in names:
-        columns[name] = columns_raw[name] + [np.mean(columns_raw[name]), np.std(columns_raw[name])]
-    # rows.extend(["mean", "std"])
-    columns["Method"].extend(["mean", "std"])
+# def calc_score_stats(filepaths, regex, names):
+#     """
+#     :type filepaths: list of str
+#     :type regex: str
+#     :type names: list of str
+#     :rtype: Pandas.DataFrame
+#     """
+#     columns_raw = {name: [] for name in names} # {str: list of float}
+#     for filepath in filepaths:
+#         scores = extract_values_with_regex(filepath, regex, names) # {str: list of str}
+#         for name in names:
+#             assert len(scores[name]) == 1
+#             score = float(scores[name][0])
+#             columns_raw[name].append(score)
+#     # e.g., {precision: [file1_p, file2_p, file3_p],
+#     #        recall: [file1_r, file2_r, file3_r]}
+#
+#     columns = OrderedDict()
+#     columns["Method"] = [os.path.basename(filepath) for filepath in filepaths] + ["mean", "std"]
+#     for name in names:
+#         columns[name] = columns_raw[name] + [np.mean(columns_raw[name]), np.std(columns_raw[name])]
+#     # e.g., {Method: [file1, file2, file3, "mean", "std"],
+#     #        precision: [file1_p, file2_p, file3_p, mean_p, std_p],
+#     #        recall: [file1_r, file2_r, file3_r, mean_r, std_r],
+#
+#     for name1 in names:
+#         max_index = np.argmax(columns_raw[name1])
+#         for name2 in names:
+#             columns[name2].append(columns_raw[name2][max_index])
+#         columns["Method"].append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
+#     # e.g., {Method: [file1, file2, file3, "mean", "std", "Max-precision: file*", "Max-recall: file**"],
+#     #        precision: [file1_p, file2_p, file3_p, mean_p, std_p, file*_p, file**_p],
+#     #        recall: [file1_r, file2_r, file3_r, mean_r, std_r, file*_r, file**_r],
+#
+#     df = pd.DataFrame(columns)
+#     pd.options.display.float_format = "{:,.2f}".format
+#     return df
 
-    for name1 in names:
-        max_index = np.argmax(columns_raw[name1])
-        for name2 in names:
-            columns[name2].append(columns_raw[name2][max_index])
-        # rows.append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
-        columns["Method"].append("Max-%s: %s" % (name1, os.path.basename(filepaths[max_index])))
-
-    # df = pd.DataFrame(columns, index=rows)
-    df = pd.DataFrame(columns)
-    pd.options.display.float_format = "{:,.2f}".format
-    return df
-
-def plot_given_files(
-        filepaths, regex,
-        xticks, xlabel, ylabels,
-        legend_names, legend_anchor, legend_location,
-        marker="o", linestyle="-", markersize=10,
-        fontsize=30,
-        savepaths=None, figsize=(8,6), dpi=100):
-    """
-    :type filepaths: list of str
-    :type regex: str
-    :type xticks: list of str
-    :type xlabel: str
-    :type ylabels: list of str
-    :type legend_names: list of str
-    :type legend_anchor: (int, int)
-    :type legend_location: str
-    :type marker: str
-    :type linestyle: str
-    :type markersize: int
-    :type fontsize: int
-    :type savepaths: list of str
-    :type figsize: (int, int)
-    :type dpi: int
-    :rtype: None
-    """
-    assert len(filepaths) == len(legend_names)
-
-    # Extraction
-    data = {ylabel: [] for ylabel in ylabels} # {str: list of list of float}
-    for filepath in filepaths:
-        scores = extract_values_with_regex(filepath, regex, ylabels) # {str: list of str}
-        for ylabel in ylabels:
-            data[ylabel].append([float(x) for x in scores[ylabel]])
-
-    if savepaths is None:
-        savepaths = [None for _ in range(len(ylabels))]
-
-    for ylabel, savepath in zip(ylabels, savepaths):
-        visualizers.plot(
-                    list_ys=data[ylabel], list_xs=None,
-                    xticks=xticks, xlabel=xlabel, ylabel=ylabel,
-                    legend_names=legend_names,
-                    legend_anchor=legend_anchor, legend_location=legend_location,
-                    marker=marker, linestyle=linestyle, markersize=markersize,
-                    fontsize=fontsize,
-                    savepath=savepath, figsize=figsize, dpi=dpi)
-
+# def plot_given_files(
+#         filepaths, regex,
+#         xticks, xlabel, ylabels,
+#         legend_names, legend_anchor, legend_location,
+#         marker="o", linestyle="-", markersize=10,
+#         fontsize=30,
+#         savepaths=None, figsize=(8,6), dpi=100):
+#     """
+#     :type filepaths: list of str
+#     :type regex: str
+#     :type xticks: list of str
+#     :type xlabel: str
+#     :type ylabels: list of str
+#     :type legend_names: list of str
+#     :type legend_anchor: (int, int)
+#     :type legend_location: str
+#     :type marker: str
+#     :type linestyle: str
+#     :type markersize: int
+#     :type fontsize: int
+#     :type savepaths: list of str
+#     :type figsize: (int, int)
+#     :type dpi: int
+#     :rtype: None
+#     """
+#     assert len(filepaths) == len(legend_names)
+#
+#     # Extraction
+#     data = {ylabel: [] for ylabel in ylabels} # {str: list of list of float}
+#     for filepath in filepaths:
+#         scores = extract_values_with_regex(filepath, regex, ylabels) # {str: list of str}
+#         for ylabel in ylabels:
+#             data[ylabel].append([float(x) for x in scores[ylabel]])
+#
+#     if savepaths is None:
+#         savepaths = [None for _ in range(len(ylabels))]
+#
+#     for ylabel, savepath in zip(ylabels, savepaths):
+#         visualizers.plot(
+#                     list_ys=data[ylabel], list_xs=None,
+#                     xticks=xticks, xlabel=xlabel, ylabel=ylabel,
+#                     legend_names=legend_names,
+#                     legend_anchor=legend_anchor, legend_location=legend_location,
+#                     marker=marker, linestyle=linestyle, markersize=markersize,
+#                     fontsize=fontsize,
+#                     savepath=savepath, figsize=figsize, dpi=dpi)
+#
 

@@ -2,13 +2,12 @@
 
 My utility functions/classes for experiments with Python.
 
-## Required packages ##
+## Requirements ##
 
 - numpy
 - pandas
 - scikit-learn
 - chainer
-- visualizers (https://github.com/norikinishida/visualizers)
 
 ## Setting ##
 
