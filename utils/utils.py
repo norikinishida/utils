@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import gensim
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from chainer import cuda, optimizers, Variable
+from chainer import cuda, Variable
 import pyprind
 
 ###############################
@@ -1072,24 +1072,30 @@ def convert_ndarray_to_variable(xs, seq):
     else:
         return Variable(cuda.cupy.asarray(xs))
 
-def get_optimizer(name):
-    """
-    :type name: str
-    :rtype: chainer.Optimizer
-    """
-    if name == "adadelta":
-        opt = optimizers.AdaDelta()
-    elif name == "adagrad":
-        opt = optimizers.AdaGrad()
-    elif name == "adam":
-        opt = optimizers.Adam()
-    elif name == "rmsprop":
-        opt = optimizers.RMSprop()
-    elif name == "smorms3":
-        opt = optimizers.SMORMS3()
-    else:
-        raise ValueError("Unknown optimizer_name=%s" % name)
-    return opt
+# def get_optimizer(name):
+#     """
+#     :type name: str
+#     :rtype: chainer.Optimizer
+#     """
+#     if name == "sgd":
+#         opt = optimizers.SGD()
+#     elif name == "momentumsgd":
+#         opt = optimizers.CorrectedMomentumSGD()
+#     elif name == "adadelta":
+#         opt = optimizers.AdaDelta()
+#     elif name == "adagrad":
+#         opt = optimizers.AdaGrad()
+#     elif name == "adam":
+#         opt = optimizers.Adam()
+#     elif name == "rmsprop":
+#         opt = optimizers.RMSprop()
+#     elif name == "rmspropgraves":
+#         opt = optimizers.RMSpropGraves()
+#     elif name == "smorms3":
+#         opt = optimizers.SMORMS3()
+#     else:
+#         raise ValueError("Unknown optimizer_name=%s" % name)
+#     return opt
 
 ############################
 # Functions/Classes for machine learning training
