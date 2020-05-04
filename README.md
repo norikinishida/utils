@@ -8,6 +8,8 @@ My utility functions/classes for experiments with Python.
 - pandas
 - scikit-learn
 - chainer
+- gensim
+- pyprind
 
 ## Setting ##
 
