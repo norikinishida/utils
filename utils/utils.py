@@ -45,7 +45,7 @@ def set_logger(filename):
     logging.basicConfig(level=DEBUG, format="%(message)s", filename=filename, filemode="w")
 
 ############################
-# Functions/Classes for configulation
+# Configulation
 
 class Config(object):
     def __init__(self, path_config=None):
@@ -170,7 +170,7 @@ def dump_hyperparams_summary(path_in, path_out, exception_names):
     df.to_csv(path_out, index=False)
 
 ############################
-# Functions/Classes for general purpose
+# General
 
 def get_basename_without_ext(path):
     """
@@ -205,7 +205,7 @@ def hash_string(text):
     return int(i[:8]) # to limit the value between 0 and 2***32-1
 
 ############################
-# Functions/Classes for general IO
+# IO
 
 def mkdir(path, newdir=None):
     """
@@ -508,7 +508,47 @@ def pretty_format_dict(dct):
     return "{}".format(json.dumps(dct, indent=4))
 
 ############################
-# Functions/Classes for manipulating lists/arrays/dictionary
+# Numerical calculation
+
+def normalize_vectors(mat):
+    """
+    :type mat: numpy.ndarray(shape=(batch,feat_dim))
+    :rtype: numpy.ndarray(shape=(batch,feat_dim))
+    """
+    return mat / np.linalg.norm(mat, axis=1)[:,None]
+
+def levenshtein_distance(seq1, seq2):
+    """
+    :type seq1: list of Any
+    :type seq2: list of Any
+    :rtype: float
+    """
+    length1 = len(seq1)
+    length2 = len(seq2)
+
+    table = np.zeros((length1 + 1, length2 + 1))
+
+    # Base case
+    for i1 in range(length1 + 1):
+        table[i1, 0] = i1
+    for i2 in range(length2 + 1):
+        table[0, i2] = i2
+
+    # General case
+    for i1 in range(1, length1 + 1):
+        for i2 in range(1, length2 + 1):
+            if seq1[i1 - 1] == seq2[i2 - 1]:
+                cost = 0.0
+            else:
+                cost = 1.0
+            table[i1, i2] = min(table[i1-1, i2] + 1.0, # Insertion
+                                table[i1, i2-1] + 1.0, # Deletion
+                                table[i1-1, i2-1] + cost) # Replacement/Nothing
+
+    return table[length1, length2]
+
+############################
+# Data structures
 
 def filter_by_condition(xs, ys, condition_function):
     """
@@ -557,52 +597,6 @@ def random_replace_list(xs, ps, z):
     rs = np.random.random((N,))
     ys = [z if r < p else x for x,p,r in zip(xs,ps,rs)]
     return ys
-
-############################
-# Functions/Classes for mathematical calculation
-
-def normalize_vectors(mat):
-    """
-    :type mat: numpy.ndarray(shape=(batch,feat_dim))
-    :rtype: numpy.ndarray(shape=(batch,feat_dim))
-    """
-    return mat / np.linalg.norm(mat, axis=1)[:,None]
-
-############################
-# Functions/Classes for distance calculation
-
-def levenshtein_distance(seq1, seq2):
-    """
-    :type seq1: list of Any
-    :type seq2: list of Any
-    :rtype: float
-    """
-    length1 = len(seq1)
-    length2 = len(seq2)
-
-    table = np.zeros((length1 + 1, length2 + 1))
-
-    # Base case
-    for i1 in range(length1 + 1):
-        table[i1, 0] = i1
-    for i2 in range(length2 + 1):
-        table[0, i2] = i2
-
-    # General case
-    for i1 in range(1, length1 + 1):
-        for i2 in range(1, length2 + 1):
-            if seq1[i1 - 1] == seq2[i2 - 1]:
-                cost = 0.0
-            else:
-                cost = 1.0
-            table[i1, i2] = min(table[i1-1, i2] + 1.0, # Insertion
-                                table[i1, i2-1] + 1.0, # Deletion
-                                table[i1-1, i2-1] + cost) # Replacement/Nothing
-
-    return table[length1, length2]
-
-############################
-# Functions/Classes for data processing
 
 class DataBatch(object):
 
@@ -785,7 +779,7 @@ class DataPool(object):
         return output
 
 ############################
-# Functions/Classes for basic feature vectors
+# Machine learning
 
 class TemplateFeatureExtractor(object):
 
@@ -882,6 +876,59 @@ def make_multihot_vectors(dim, fire):
         vectors[instance_i, fire[instance_i]] = 1.0
     return vectors
 
+class BestScoreHolder(object):
+
+    def __init__(self, scale=1.0, higher_is_better=True):
+        self.scale = scale
+        self.higher_is_better = higher_is_better
+
+        if higher_is_better:
+            self.comparison_function = lambda best, cur: best < cur
+        else:
+            self.comparison_function = lambda best, cur: best > cur
+
+        if higher_is_better:
+            self.best_score = -np.inf
+        else:
+            self.best_score = np.inf
+        self.best_step = 0
+        self.patience = 0
+
+    def init(self):
+        if self.higher_is_better:
+            self.best_score = -np.inf
+        else:
+            self.best_score = np.inf
+        self.best_step = 0
+        self.patience = 0
+
+    def compare_scores(self, score, step):
+        if self.comparison_function(self.best_score, score):
+            # Update the score
+            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
+                    (self.best_score * self.scale, self.best_step, self.patience,
+                     score * self.scale, step, 0))
+            self.best_score = score
+            self.best_step = step
+            self.patience = 0
+            return True
+        else:
+            # Increment the patience
+            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
+                    (self.best_score * self.scale, self.best_step, self.patience,
+                     self.best_score * self.scale, self.best_step, self.patience+1))
+            self.patience += 1
+            return False
+
+    def ask_finishing(self, max_patience):
+        if self.patience >= max_patience:
+            return True
+        else:
+            return False
+
+############################
+# NLP
+
 class BoW(object):
 
     def __init__(self, documents, tfidf):
@@ -916,9 +963,6 @@ def read_english_stopwords():
     """
     stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
     return stopwords
-
-############################
-# Functions/Classes for pre-trained word embeddings
 
 def read_word_embedding_matrix(path, dim, vocab, scale):
     """
@@ -1022,8 +1066,134 @@ def keyedvectors2dict(model):
         word2vec[word] = model[word]
     return word2vec
 
+def build_vocabulary(paths, path_vocab, prune_at, min_count, special_words):
+    """
+    :type paths: list of str
+    :type path_vocab: str
+    :type prune_at: int
+    :type min_count: int
+    :type special_words: list of str
+    :rtype: None
+    """
+    assert not os.path.exists(path_vocab)
+
+    # Count
+    counter = Counter()
+    for path in pyprind.prog_bar(paths):
+        for line in open(path):
+            tokens = line.strip().split()
+            counter.update(tokens)
+    counter = counter.most_common()
+
+    # Prune
+    counter = counter[:prune_at]
+    frequencies = dict(counter)
+    counter.sort(key=lambda x: (-x[1], x[0]))
+    vocab_words = [w for w,freq in counter if freq >= min_count]
+
+    # Add special words
+    for sw in special_words:
+        if not sw in vocab_words:
+            vocab_words = vocab_words + [sw]
+            frequencies[sw] = 0 # TODO
+
+    # Creat a word-to-id dictionary
+    vocab = OrderedDict()
+    for w_id, w in enumerate(vocab_words):
+        vocab[w] = w_id
+
+    # Add a special OOV symbol
+    if not "<unk>" in vocab.keys():
+        vocab["<unk>"] = len(vocab)
+        frequencies["<unk>"] = 0 # TODO
+    print("Vocabulary size (w/ '<unk>')=%d" % len(vocab))
+
+    # Write
+    with open(path_vocab, "w") as f:
+        for w, w_id in vocab.items():
+            freq = frequencies[w]
+            f.write("%s\t%d\t%d\n" % (w, w_id, freq))
+
+    print("Saved the vocabulary to %s" % path_vocab)
+
+def replace_oov_tokens(paths_in, paths_out, path_vocab):
+    """
+    :type paths_in: list of str
+    :type paths_out: list of str
+    :type path_vocab: str
+    :rtype: None
+    """
+    assert len(paths_in) == len(paths_out)
+
+    vocab = read_vocab(path_vocab)
+    vocab = list(vocab.keys())
+
+    vocab = {w:w for w in vocab}
+
+    prog_bar = pyprind.ProgBar(len(paths_in))
+    for path_in, path_out in zip(paths_in, paths_out):
+        sentences = read_lines(path_in, process=lambda line: line.split())
+
+        sentences = [[vocab.get(token, "<unk>") for token in sent] for sent in sentences]
+
+        with open(path_out, "w") as f:
+            for sent in sentences:
+                sent = " ".join(sent)
+                f.write("%s\n" % sent)
+
+        prog_bar.update()
+
+def get_word_counter(path=None, lines=None):
+    """
+    :type path: str
+    :type lines: list of list of str
+    :type process: function
+    """
+    counter = Counter()
+
+    if path is not None:
+        assert lines is None
+        for line in open(path):
+            tokens = line.strip().split()
+            counter.update(tokens)
+    elif lines is not None:
+        assert path is None
+        for tokens in lines:
+            counter.update(tokens)
+    else:
+        raise ValueError("Both ``path'' and ``lines'' are None.")
+
+    return counter
+
+def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
+    """
+    :type path_dir: str
+    :type top_k: int
+    :type process: function
+    :rtype: None
+    """
+    filenames = os.listdir(path_dir)
+
+    # stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
+    stopwords = read_english_stopwords()
+
+    counter = Counter()
+    for filename in filenames:
+        c = get_word_counter(path=os.path.join(path_dir, filename))
+        counter.update(c)
+    counter = counter.most_common()
+    counter = counter[:1000]
+
+    # Filtering stopwords
+    counter = [(w, freq) for w, freq in counter if not w in stopwords]
+
+    for k in range(min(top_k, len(counter))):
+        w, freq = counter[k]
+        print("word=%s, frequency=%d" % (w, freq))
+
+
 ############################
-# Functions/Classes for neural network models (using Chainer)
+# Neural network (using Chainer)
 
 def transform_words(xs):
     """
@@ -1098,108 +1268,7 @@ def convert_ndarray_to_variable(xs, seq):
 #     return opt
 
 ############################
-# Functions/Classes for machine learning training
-
-class BestScoreHolder(object):
-
-    def __init__(self, scale=1.0, higher_is_better=True):
-        self.scale = scale
-        self.higher_is_better = higher_is_better
-
-        if higher_is_better:
-            self.comparison_function = lambda best, cur: best < cur
-        else:
-            self.comparison_function = lambda best, cur: best > cur
-
-        if higher_is_better:
-            self.best_score = -np.inf
-        else:
-            self.best_score = np.inf
-        self.best_step = 0
-        self.patience = 0
-
-    def init(self):
-        if self.higher_is_better:
-            self.best_score = -np.inf
-        else:
-            self.best_score = np.inf
-        self.best_step = 0
-        self.patience = 0
-
-    def compare_scores(self, score, step):
-        if self.comparison_function(self.best_score, score):
-            # Update the score
-            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
-                    (self.best_score * self.scale, self.best_step, self.patience,
-                     score * self.scale, step, 0))
-            self.best_score = score
-            self.best_step = step
-            self.patience = 0
-            return True
-        else:
-            # Increment the patience
-            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
-                    (self.best_score * self.scale, self.best_step, self.patience,
-                     self.best_score * self.scale, self.best_step, self.patience+1))
-            self.patience += 1
-            return False
-
-    def ask_finishing(self, max_patience):
-        if self.patience >= max_patience:
-            return True
-        else:
-            return False
-
-############################
-# Functions/Classes for analysis
-
-def get_word_counter(path=None, lines=None):
-    """
-    :type path: str
-    :type lines: list of list of str
-    :type process: function
-    """
-    counter = Counter()
-
-    if path is not None:
-        assert lines is None
-        for line in open(path):
-            tokens = line.strip().split()
-            counter.update(tokens)
-    elif lines is not None:
-        assert path is None
-        for tokens in lines:
-            counter.update(tokens)
-    else:
-        raise ValueError("Both ``path'' and ``lines'' are None.")
-
-    return counter
-
-def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
-    """
-    :type path_dir: str
-    :type top_k: int
-    :type process: function
-    :rtype: None
-    """
-    filenames = os.listdir(path_dir)
-
-    # stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
-    stopwords = read_english_stopwords()
-
-    counter = Counter()
-    for filename in filenames:
-        c = get_word_counter(path=os.path.join(path_dir, filename))
-        counter.update(c)
-    counter = counter.most_common()
-    counter = counter[:1000]
-
-    # Filtering stopwords
-    counter = [(w, freq) for w, freq in counter if not w in stopwords]
-
-    for k in range(min(top_k, len(counter))):
-        w, freq = counter[k]
-        print("word=%s, frequency=%d" % (w, freq))
+# Analysis
 
 def extract_values_with_regex(filepath, regex, names):
     """
