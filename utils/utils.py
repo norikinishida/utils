@@ -1066,9 +1066,21 @@ def keyedvectors2dict(model):
         word2vec[word] = model[word]
     return word2vec
 
-def build_vocabulary(paths, path_vocab, prune_at, min_count, special_words):
+def read_process_and_write(paths_in, paths_out, process: lambda line: line):
+    assert len(paths_in) == len(paths_out)
+    n_files = len(paths_in)
+    prog_bar = pyprind.ProgBar(n_files)
+    for path_in, path_out in zip(paths_in, paths_out):
+        with open(path_out, "w") as f:
+            for line in open(path_in):
+                line = line.strip()
+                line = process(line)
+                f.write("%s\n" % line)
+        prog_bar.update()
+
+def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split()):
     """
-    :type paths: list of str
+    :type paths_file: list of str
     :type path_vocab: str
     :type prune_at: int
     :type min_count: int
@@ -1079,9 +1091,9 @@ def build_vocabulary(paths, path_vocab, prune_at, min_count, special_words):
 
     # Count
     counter = Counter()
-    for path in pyprind.prog_bar(paths):
-        for line in open(path):
-            tokens = line.strip().split()
+    for path_file in pyprind.prog_bar(paths_file):
+        for line in open(path_file):
+            tokens = process(line)
             counter.update(tokens)
     counter = counter.most_common()
 
@@ -1132,14 +1144,14 @@ def replace_oov_tokens(paths_in, paths_out, path_vocab):
 
     prog_bar = pyprind.ProgBar(len(paths_in))
     for path_in, path_out in zip(paths_in, paths_out):
-        sentences = read_lines(path_in, process=lambda line: line.split())
+        lines = read_lines(path_in, process=lambda line: line.split())
 
-        sentences = [[vocab.get(token, "<unk>") for token in sent] for sent in sentences]
+        lines = [[vocab.get(token, "<unk>") for token in line] for line in lines]
 
         with open(path_out, "w") as f:
-            for sent in sentences:
-                sent = " ".join(sent)
-                f.write("%s\n" % sent)
+            for line in lines:
+                line = " ".join(line)
+                f.write("%s\n" % line)
 
         prog_bar.update()
 
