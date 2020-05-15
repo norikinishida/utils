@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import gensim
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.model_selection import KFold
 from chainer import cuda, Variable
 import pyprind
 
@@ -598,6 +599,84 @@ def random_replace_list(xs, ps, z):
     ys = [z if r < p else x for x,p,r in zip(xs,ps,rs)]
     return ys
 
+class DataInstance(object):
+
+    def __init__(self, **kargs):
+        self.attr_names = []
+        for key, value in kargs.items():
+            setattr(self, key, value)
+            self.attr_names.append(key)
+
+    def __str__(self):
+        return "DataInstance(%s)" % ",".join(self.attr_names)
+
+def filter_dataset(dataset, filtering_function):
+    """
+    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    :type filtering_function: function
+    :rtype: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    """
+    filtered_dataset = []
+    for data in dataset:
+        if not filtering_function(data):
+            filtered_dataset.append(data)
+    filtered_dataset = np.asarray(filtered_dataset, dtype="O")
+    return filtered_dataset
+
+def split_dataset(dataset, n_dev, seed=None):
+    """
+    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    :type n_dev: int
+    :type deed: int / None
+    :rtype: numpy.ndarray(shape=(dataset_size-n_dev,), dtype="O"), numpy.ndarray(shape=(n_dev,), dtype="O")
+    """
+    n_total = len(dataset)
+    assert 0 < n_dev < n_total
+
+    if seed is None:
+        indices = np.random.permutation(n_total)
+    else:
+        indices = np.random.RandomState(seed).permutation(n_total)
+
+    dev_indices = indices[:n_dev]
+    train_indices = indices[n_dev:]
+
+    assert len(train_indices) + len(dev_indices) == len(dataset)
+
+    train_dataset = dataset[train_indices]
+    dev_dataset = dataset[dev_indices]
+
+    writelog("n_dev=%d" % n_dev)
+    writelog("# of training instances=%d" % len(train_dataset))
+    writelog("# of development instances=%d" % len(dev_dataset))
+
+    return train_dataset, dev_dataset
+
+def kfold_dataset(dataset, n_splits, split_id):
+    """
+    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    :type n_splits: int
+    :type split_id: int
+    :rtype: numpy.ndarray(shape=(train_size,), dtype="O"), numpy.ndarray(shape=(dev_size,), dtype="O")
+    """
+    assert 0 <= split_id < n_splits
+
+    kfold = KFold(n_splits=n_splits, random_state=1234, shuffle=True)
+
+    indices_list = list(kfold.split(np.arange(len(dataset))))
+    train_indices, dev_indices = indices_list[split_id]
+    assert len(train_indices) + len(dev_indices) == len(dataset)
+
+    train_dataset = dataset[train_indices]
+    dev_dataset = dataset[dev_indices]
+
+    writelog("n_splits=%d" % n_splits)
+    writelog("split_id=%d" % split_id)
+    writelog("# of training instances=%d" % len(train_dataset))
+    writelog("# of development instances=%d" % len(dev_dataset))
+
+    return train_dataset, dev_dataset
+
 class DataBatch(object):
 
     def __init__(self, **kargs):
@@ -1078,16 +1157,21 @@ def read_process_and_write(paths_in, paths_out, process: lambda line: line):
                 f.write("%s\n" % line)
         prog_bar.update()
 
-def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split()):
+def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split(), unk_symbol=None):
     """
     :type paths_file: list of str
     :type path_vocab: str
     :type prune_at: int
     :type min_count: int
     :type special_words: list of str
+    :type process: function from str to list of str
+    :type unk_symbol: str
     :rtype: None
     """
     assert not os.path.exists(path_vocab)
+
+    if unk_symbol is None:
+        unk_symbol = "<unk>"
 
     # Count
     counter = Counter()
@@ -1115,10 +1199,10 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
         vocab[w] = w_id
 
     # Add a special OOV symbol
-    if not "<unk>" in vocab.keys():
-        vocab["<unk>"] = len(vocab)
-        frequencies["<unk>"] = 0 # TODO
-    print("Vocabulary size (w/ '<unk>')=%d" % len(vocab))
+    if not unk_symbol in vocab.keys():
+        vocab[unk_symbol] = len(vocab)
+        frequencies[unk_symbol] = 0 # TODO
+    print("Vocabulary size (w/ '%s')=%d" % (unk_symbol, len(vocab)))
 
     # Write
     with open(path_vocab, "w") as f:
@@ -1128,14 +1212,18 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
 
     print("Saved the vocabulary to %s" % path_vocab)
 
-def replace_oov_tokens(paths_in, paths_out, path_vocab):
+def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
     """
     :type paths_in: list of str
     :type paths_out: list of str
     :type path_vocab: str
+    :type unk_symbol: str
     :rtype: None
     """
     assert len(paths_in) == len(paths_out)
+
+    if unk_symbol is None:
+        unk_symbol = "<unk>"
 
     vocab = read_vocab(path_vocab)
     vocab = list(vocab.keys())
@@ -1146,7 +1234,7 @@ def replace_oov_tokens(paths_in, paths_out, path_vocab):
     for path_in, path_out in zip(paths_in, paths_out):
         lines = read_lines(path_in, process=lambda line: line.split())
 
-        lines = [[vocab.get(token, "<unk>") for token in line] for line in lines]
+        lines = [[vocab.get(token, unk_symbol) for token in line] for line in lines]
 
         with open(path_out, "w") as f:
             for line in lines:
