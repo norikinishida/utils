@@ -1212,6 +1212,29 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
 
     print("Saved the vocabulary to %s" % path_vocab)
 
+def concat_vocabularies(paths_vocab, path_out):
+    assert len(paths_vocab) > 1
+
+    vocab = OrderedDict()
+
+    for path_vocab in paths_vocab:
+        for line in open(path_vocab):
+            word, word_id, freq = line.strip().split("\t")
+            freq = int(freq)
+            if word in vocab:
+                word_id_exst, freq_exst = vocab[word]
+                freq_exst = int(freq_exst)
+                vocab[word] = (word_id_exst, freq_exst + freq)
+            else:
+                vocab[word] = (word_id, freq)
+
+    with open(path_out, "w") as f:
+        for word in vocab.keys():
+            word_id, freq = vocab[word]
+            f.write("%s\t%s\t%d\n" % (word, word_id, freq))
+
+    print("Saved the vocabulary to %s" % path_out)
+
 def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
     """
     :type paths_in: list of str
