@@ -610,15 +610,15 @@ class DataInstance(object):
     def __str__(self):
         return "DataInstance(%s)" % ",".join(self.attr_names)
 
-def filter_dataset(dataset, filtering_function):
+def filter_dataset(dataset, condition):
     """
     :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
-    :type filtering_function: function
+    :type condition: function
     :rtype: numpy.ndarray(shape=(dataset_size,), dtype="O")
     """
     filtered_dataset = []
     for data in dataset:
-        if not filtering_function(data):
+        if condition(data):
             filtered_dataset.append(data)
     filtered_dataset = np.asarray(filtered_dataset, dtype="O")
     return filtered_dataset
