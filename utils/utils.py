@@ -1157,7 +1157,7 @@ def read_process_and_write(paths_in, paths_out, process: lambda line: line):
                 f.write("%s\n" % line)
         prog_bar.update()
 
-def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split(), unk_symbol=None):
+def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split(), unk_symbol=None, with_unk=True):
     """
     :type paths_file: list of str
     :type path_vocab: str
@@ -1166,6 +1166,7 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
     :type special_words: list of str
     :type process: function from str to list of str
     :type unk_symbol: str
+    :type with_unk: bool
     :rtype: None
     """
     assert not os.path.exists(path_vocab)
@@ -1199,10 +1200,14 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
         vocab[w] = w_id
 
     # Add a special OOV symbol
-    if not unk_symbol in vocab.keys():
+    if with_unk and not unk_symbol in vocab.keys():
         vocab[unk_symbol] = len(vocab)
         frequencies[unk_symbol] = 0 # TODO
-    print("Vocabulary size (w/ '%s')=%d" % (unk_symbol, len(vocab)))
+
+    if with_unk:
+        print("Vocabulary size (w/ '%s')=%d" % (unk_symbol, len(vocab)))
+    else:
+        print("Vocabulary size=%d" % len(vocab))
 
     # Write
     with open(path_vocab, "w") as f:
