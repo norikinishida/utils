@@ -1055,7 +1055,7 @@ def read_word_embedding_matrix(path, dim, vocab, scale):
     W = convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale)
     return W
 
-def read_word2vec(path, dim):
+def read_word2vec(path, dim=None):
     """
     :type path: str
     :type dim: int
@@ -1064,6 +1064,16 @@ def read_word2vec(path, dim):
     print("Loading pretrained word vectors from %s ..." % path)
 
     word2vec = {}
+
+    # Determine the dimension size if dim is None
+    if dim is None:
+        for line_i, line in enumerate(open(path)):
+            # Check the second line to ignore the top head line
+            if line_i == 1:
+                items = line.strip().split()
+                dim = len(items[1:])
+                break
+    print("Dimension size=%d" % dim)
 
     # Prepara prog_bar
     n_lines = 0
