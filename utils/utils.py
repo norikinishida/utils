@@ -105,6 +105,8 @@ def add_lines_to_configfile(path, new_lines, previous_key):
             cur_line = cur_line.strip()
             f.write("%s\n" % cur_line)
             print(cur_line)
+            if cur_line == "":
+                continue
 
             key = cur_line.split()[0]
             if key == previous_key:

@@ -1,6 +1,8 @@
 # utils
 
-My utility functions/classes for experiments with Python.
+(c) 2019 Noriki Nishida
+
+My utility functions/classes for experiments in Python.
 
 ## Requirements ##
 
