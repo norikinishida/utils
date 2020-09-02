@@ -36,9 +36,9 @@ def writelog(text):
     """
     logger.debug("%s" % text)
 
-def set_logger(filename):
-    if os.path.exists(filename):
-        print("A file %s already exists." % filename)
+def set_logger(filename, overwrite=False):
+    if os.path.exists(filename) and not overwrite:
+        print("%s already exists." % filename)
         do_remove = input("Delete the existing log file? [y/n]: ")
         if (not do_remove.lower().startswith("y")) and (not len(do_remove) == 0):
             print("Done.")
