@@ -363,6 +363,8 @@ def read_conll(path, keys):
     sentence = []
     for line in open(path):
         line = line.strip()
+        if line.startswith("#"):
+            continue
         if not line:
             if len(sentence) != 0:
                 sentences.append(sentence)
@@ -1331,6 +1333,22 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
         w, freq = counter[k]
         print("word=%s, frequency=%d" % (w, freq))
 
+def normalize_string(string, able=None):
+    if able is None:
+        return string
+    if "space" in able:
+        string = re.sub(r"[\t\u2028\u2029\u00a0\u1680\u180e\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000]+", " ", string)
+    if "hyphen" in able:
+        string = re.sub(r"[\u2010\u002d\u2011\u2043\u2212]+", "-", string)
+    if "amp" in able:
+        string = re.sub(r"&amp;", "&", string)
+    if "quot" in able:
+        string = re.sub(r"&quot;", "'", string)
+    if "lt" in able:
+        string = re.sub(r"&lt;", "<", string)
+    if "gt" in able:
+        string = re.sub(r"&gt;", ">", string)
+    return string
 
 ############################
 # Neural network (using Chainer)
