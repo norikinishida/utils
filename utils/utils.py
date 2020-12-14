@@ -3,6 +3,7 @@ from configparser import SafeConfigParser
 import datetime
 import hashlib
 import json
+import jsonlines
 import logging
 from logging import getLogger, Formatter, StreamHandler, DEBUG
 import os
@@ -292,6 +293,15 @@ def write_json(path, dct):
     """
     with open(path, "w") as f:
         json.dump(dct, f, indent=4)
+
+def read_jsonlines(path):
+    """
+    :type path: str
+    :rtype: list of dictionary
+    """
+    with jsonlines.open(path) as reader:
+        dcts = list(reader)
+    return dcts
 
 def read_vectors(path):
     """
