@@ -5,7 +5,6 @@ import hashlib
 import json
 import jsonlines
 import logging
-from logging import getLogger, Formatter, StreamHandler, DEBUG
 import os
 import re
 import sys
@@ -22,20 +21,17 @@ import pyprind
 ###############################
 # Logging
 
-logger = getLogger("logger")
-logger.setLevel(DEBUG)
-
-handler = StreamHandler()
-handler.setLevel(DEBUG)
-handler.setFormatter(Formatter(fmt="%(message)s"))
-logger.addHandler(handler)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                    datefmt="%m/%d/%Y %H:%M:%S",
+                    level=logging.INFO)
+logger = logging.getLogger()
 
 def writelog(text):
     """
     :type text: str
     :rtype: None
     """
-    logger.debug("%s" % text)
+    logger.info("%s" % text)
 
 def set_logger(filename, overwrite=False):
     if os.path.exists(filename) and not overwrite:
@@ -44,7 +40,7 @@ def set_logger(filename, overwrite=False):
         if (not do_remove.lower().startswith("y")) and (not len(do_remove) == 0):
             print("Done.")
             sys.exit(0)
-    logging.basicConfig(level=DEBUG, format="%(message)s", filename=filename, filemode="w")
+    logger.addHandler(logging.FileHandler(filename, "w"))
 
 ############################
 # Configulation
