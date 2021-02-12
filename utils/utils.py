@@ -2,6 +2,7 @@ from collections import OrderedDict, Counter
 from configparser import SafeConfigParser
 import datetime
 import hashlib
+import io
 import json
 import jsonlines
 import logging
@@ -26,12 +27,16 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger()
 
-def writelog(text):
+def writelog(text, error=False):
     """
     :type text: str
+    :type error: bool
     :rtype: None
     """
-    logger.info("%s" % text)
+    if error:
+        logger.error("%s" % text)
+    else:
+        logger.info("%s" % text)
 
 def set_logger(filename, overwrite=False):
     if os.path.exists(filename) and not overwrite:
@@ -51,7 +56,7 @@ class Config(object):
         self.parser.read("./config/path.ini")
         if path_config is not None:
             if not os.path.exists(path_config):
-                print("Error!: path_config=%s does not exist." % path_config)
+                writelog("Error!: path_config=%s does not exist." % path_config, error=True)
                 sys.exit(-1)
             self.parser.read(path_config)
 
@@ -87,6 +92,12 @@ class Config(object):
             return None
         else:
             return s
+
+    def show(self, target_section=None):
+        for section in self.parser.keys():
+            if (target_section is None) or section == target_section:
+                for key, value in self.parser[section].items():
+                    writelog("%s = %s" % (key, value))
 
 def add_lines_to_configfile(path, new_lines, previous_key):
     """
@@ -184,7 +195,8 @@ def get_current_time():
     """
     :rtype: str
     """
-    return datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    # return datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    return datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
 def get_random_english_word():
     """
@@ -219,7 +231,7 @@ def mkdir(path, newdir=None):
         target = os.path.join(path, newdir)
     if not os.path.exists(target):
         os.makedirs(target)
-        print("Created a directory=%s" % target)
+        writelog("Created directory = %s" % target)
 
 def read_vocab(path):
     """
@@ -227,14 +239,14 @@ def read_vocab(path):
     :rtype: {str: int}
     """
     begin_time = time.time()
-    print("Loading a vocabulary from %s" % path)
+    writelog("Loading a vocabulary from %s" % path)
     vocab = OrderedDict()
     for line in open(path):
         word, word_id, freq = line.strip().split("\t")
         vocab[word] = int(word_id)
     end_time = time.time()
-    print("Loaded. %f [sec.]" % (end_time - begin_time))
-    print("Vocabulary size=%d" % len(vocab))
+    writelog("Loaded. %f [sec.]" % (end_time - begin_time))
+    writelog("Vocabulary size = %d" % len(vocab))
     return vocab
 
 def write_vocab(path, data):
@@ -272,13 +284,18 @@ def write_lines(path, lines, process=lambda line: line):
             line = process(line)
             f.write("%s\n" % line)
 
-def read_json(path):
+def read_json(path, encoding=None):
     """
     :type path: str
     :rtype: dictionary
     """
-    with open(path) as f:
-        dct = json.load(f)
+    if encoding is None:
+        with open(path) as f:
+            dct = json.load(f)
+    else:
+        with io.open(path, "rt", encoding=encoding) as f:
+            line = f.read()
+            dct = json.loads(line)
     return dct
 
 def write_json(path, dct):
@@ -656,10 +673,6 @@ def split_dataset(dataset, n_dev, seed=None):
     train_dataset = dataset[train_indices]
     dev_dataset = dataset[dev_indices]
 
-    writelog("n_dev=%d" % n_dev)
-    writelog("# of training instances=%d" % len(train_dataset))
-    writelog("# of development instances=%d" % len(dev_dataset))
-
     return train_dataset, dev_dataset
 
 def kfold_dataset(dataset, n_splits, split_id):
@@ -679,11 +692,6 @@ def kfold_dataset(dataset, n_splits, split_id):
 
     train_dataset = dataset[train_indices]
     dev_dataset = dataset[dev_indices]
-
-    writelog("n_splits=%d" % n_splits)
-    writelog("split_id=%d" % split_id)
-    writelog("# of training instances=%d" % len(train_dataset))
-    writelog("# of development instances=%d" % len(dev_dataset))
 
     return train_dataset, dev_dataset
 
@@ -717,7 +725,7 @@ def concat_databatch(databatch1, databatch2):
     shared_attr_names.sort()
     kargs = {}
     for attr_i, attr_name in enumerate(shared_attr_names):
-        print("Shared attribute #%d %s" % (attr_i+1, attr_name))
+        writelog("Shared attribute #%d %s" % (attr_i+1, attr_name))
         array1 = getattr(databatch1, attr_name)
         array2 = getattr(databatch2, attr_name)
         new_array = np.concatenate([array1, array2], axis=0)
@@ -767,7 +775,7 @@ class DataPool(object):
         self._pool_attr_names = ["pool_%d" % path_i for path_i in range(len(self.paths))]
 
         # Count the number of lines in the text files
-        print("Counting the number of lines in the text files ...")
+        writelog("Counting the number of lines in the text files ...")
         self._n_lines = None
         for path in self.paths:
             # Count
@@ -994,7 +1002,7 @@ class BestScoreHolder(object):
     def compare_scores(self, score, step):
         if self.comparison_function(self.best_score, score):
             # Update the score
-            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
+            writelog("(best_score = %.02f, best_step = %d, patience = %d) -> (%.02f, %d, %d)" % \
                     (self.best_score * self.scale, self.best_step, self.patience,
                      score * self.scale, step, 0))
             self.best_score = score
@@ -1003,7 +1011,7 @@ class BestScoreHolder(object):
             return True
         else:
             # Increment the patience
-            print("(best_score=%.02f, best_step=%d, patience=%d) -> (%.02f, %d, %d)" % \
+            writelog("(best_score = %.02f, best_step = %d, patience = %d) -> (%.02f, %d, %d)" % \
                     (self.best_score * self.scale, self.best_step, self.patience,
                      self.best_score * self.scale, self.best_step, self.patience+1))
             self.patience += 1
@@ -1071,7 +1079,7 @@ def read_word2vec(path, dim=None):
     :type dim: int
     :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
     """
-    print("Loading pretrained word vectors from %s ..." % path)
+    writelog("Loading pretrained word vectors from %s ..." % path)
 
     word2vec = {}
 
@@ -1083,7 +1091,7 @@ def read_word2vec(path, dim=None):
                 items = line.strip().split()
                 dim = len(items[1:])
                 break
-    print("Dimension size=%d" % dim)
+    writelog("Dimensionality = %d" % dim)
 
     # Prepara prog_bar
     n_lines = 0
@@ -1109,11 +1117,11 @@ def read_word2vec(path, dim=None):
             prog_bar.update()
 
     for err in error_history:
-        print("dim %d(actual) != %d(expected), skipped %d-th line=%s ....." % \
+        writelog("dim %d(actual) != %d(expected), skipped %d-th line = %s ....." % \
                     (err["dim_actual"], dim, err["line_id"], err["line"]))
 
-    print("Vocabulary size=%d" % len(word2vec))
-    print("%s" % prog_bar)
+    writelog("Vocabulary size = %d" % len(word2vec))
+    writelog("%s" % prog_bar)
     return word2vec
 
 def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
@@ -1124,15 +1132,15 @@ def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     :type scale: float
     :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
     """
-    print("Converting ...")
+    writelog("Converting ...")
     begin_time = time.time()
 
     task_vocab = list(vocab.keys())
     word2vec_vocab = list(word2vec.keys())
     shared_vocab = set(task_vocab) & set(word2vec_vocab)
-    print("Vocabulary size (task)=%d" % len(task_vocab))
-    print("Vocabulary size (word2vec)=%d" % len(word2vec_vocab))
-    print("Vocabulary size (shared)=%d (|shared|/|task|=%d/%d=%.2f%%)" % \
+    writelog("Vocabulary size (task) = %d" % len(task_vocab))
+    writelog("Vocabulary size (word2vec) = %d" % len(word2vec_vocab))
+    writelog("Vocabulary size (shared) = %d (|shared|/|task| = %d/%d = %.2f%%)" % \
             (len(shared_vocab), len(shared_vocab), len(task_vocab),
                 float(len(shared_vocab))/len(task_vocab)*100.0))
 
@@ -1142,7 +1150,7 @@ def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
         W[vocab[w], :] = word2vec[w]
 
     end_time = time.time()
-    print("Converted. %f [sec.]" % (end_time - begin_time))
+    writelog("Converted. %f [sec.]" % (end_time - begin_time))
     return W
 
 def read_word2vec_using_gensim(path, binary):
@@ -1225,9 +1233,9 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
         frequencies[unk_symbol] = 0 # TODO
 
     if with_unk:
-        print("Vocabulary size (w/ '%s')=%d" % (unk_symbol, len(vocab)))
+        writelog("Vocabulary size (w/ '%s') = %d" % (unk_symbol, len(vocab)))
     else:
-        print("Vocabulary size=%d" % len(vocab))
+        writelog("Vocabulary size = %d" % len(vocab))
 
     # Write
     with open(path_vocab, "w") as f:
@@ -1235,7 +1243,7 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
             freq = frequencies[w]
             f.write("%s\t%d\t%d\n" % (w, w_id, freq))
 
-    print("Saved the vocabulary to %s" % path_vocab)
+    writelog("Saved the vocabulary to %s" % path_vocab)
 
 def concat_vocabularies(paths_vocab, path_out):
     assert len(paths_vocab) > 1
@@ -1258,7 +1266,7 @@ def concat_vocabularies(paths_vocab, path_out):
             word_id, freq = vocab[word]
             f.write("%s\t%s\t%d\n" % (word, word_id, freq))
 
-    print("Saved the vocabulary to %s" % path_out)
+    writelog("Saved the vocabulary to %s" % path_out)
 
 def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
     """
@@ -1337,7 +1345,7 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
 
     for k in range(min(top_k, len(counter))):
         w, freq = counter[k]
-        print("word=%s, frequency=%d" % (w, freq))
+        writelog("word = %s, frequency = %d" % (w, freq))
 
 def normalize_string(string, able=None):
     if able is None:
