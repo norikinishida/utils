@@ -538,6 +538,23 @@ def pretty_format_dict(dct):
 ############################
 # Numerical calculation
 
+def safe_div(x, y):
+    """
+    :type x: numpy.ndarray
+    :type y: numpy.ndarray
+    :rtype: numpy.ndarray
+    """
+    if isinstance(x, np.ndarray):
+        mask = y == 0
+        x[mask] = 0
+        y[mask] = 1
+        return x / y
+    elif isinstance(x, int):
+        if y == 0:
+            return 0
+        else:
+            return x / y
+
 def normalize_vectors(mat):
     """
     :type mat: numpy.ndarray(shape=(batch,feat_dim))
