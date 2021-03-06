@@ -216,6 +216,28 @@ def hash_string(text):
     i = str(int(h, 16))
     return int(i[:8]) # to limit the value between 0 and 2***32-1
 
+class StopWatch(object):
+
+    def __init__(self):
+        self.dictionary = {}
+
+    def start(self, name=None):
+        start_time = time.time()
+        self.dictionary[name] = {}
+        self.dictionary[name]["start"] = start_time
+
+    def stop(self, name=None):
+        stop_time = time.time()
+        self.dictionary[name]["stop"] = stop_time
+
+    def get_time(self, name=None, minute=False):
+        start_time = self.dictionary[name]["start"]
+        stop_time = self.dictionary[name]["stop"]
+        span = stop_time - start_time
+        if minute:
+            span /= 60.0
+        return span
+
 ############################
 # IO
 
