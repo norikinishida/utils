@@ -571,7 +571,7 @@ def safe_div(x, y):
         x[mask] = 0
         y[mask] = 1
         return x / y
-    elif isinstance(x, int):
+    else:
         if y == 0:
             return 0
         else:
