@@ -27,18 +27,27 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger()
 
+
 def writelog(text, error=False):
     """
-    :type text: str
-    :type error: bool
-    :rtype: None
+    Parameters
+    ----------
+    text: str
+    error: bool
     """
     if error:
         logger.error("%s" % text)
     else:
         logger.info("%s" % text)
 
+
 def set_logger(filename, overwrite=False):
+    """
+    Parameters
+    ----------
+    filename: str
+    overwrite: bool, default False
+    """
     if os.path.exists(filename) and not overwrite:
         print("%s already exists." % filename)
         do_remove = input("Delete the existing log file? [y/n]: ")
@@ -47,11 +56,18 @@ def set_logger(filename, overwrite=False):
             sys.exit(0)
     logger.addHandler(logging.FileHandler(filename, "w"))
 
+
 ############################
 # Configulation
 
+
 class Config(object):
     def __init__(self, path_config=None):
+        """
+        Parameters
+        ----------
+        path_config: str or None, default None
+        """
         self.parser = SafeConfigParser()
         self.parser.read("./config/path.ini")
         if path_config is not None:
@@ -61,26 +77,89 @@ class Config(object):
             self.parser.read(path_config)
 
     def getpath(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        str
+        """
         return self.str2None(json.loads(self.parser.get("path", key)))
 
     def getint(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        int
+        """
         return self.parser.getint("hyperparams", key)
 
     def getfloat(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        float
+        """
         return self.parser.getfloat("hyperparams", key)
 
     def getbool(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        bool
+        """
         return self.parser.getboolean("hyperparams", key)
 
     def getstr(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        str
+        """
         return self.str2None(json.loads(self.parser.get("hyperparams", key)))
 
     def getlist(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        list
+        """
         xs = json.loads(self.parser.get("hyperparams", key))
         xs = [self.str2None(x) for x in xs]
         return xs
 
     def getdict(self, key):
+        """
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        dict
+        """
         xs  = json.loads(self.parser.get("hyperparams", key))
         for key in xs.keys():
             value = self.str2None(xs[key])
@@ -88,23 +167,39 @@ class Config(object):
         return xs
 
     def str2None(self, s):
+        """
+        Parameters
+        ----------
+        s: Any
+
+        Returns
+        -------
+        Any
+        """
         if isinstance(s, str) and s == "None":
             return None
         else:
             return s
 
     def show(self, target_section=None):
+        """
+        Parameters
+        ----------
+        target_section: str or None, default None
+        """
         for section in self.parser.keys():
             if (target_section is None) or section == target_section:
                 for key, value in self.parser[section].items():
                     writelog("%s = %s" % (key, value))
 
+
 def add_lines_to_configfile(path, new_lines, previous_key):
     """
-    :type path: str
-    :type lines: list of str
-    :type previous_line: str
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    lines: list[str]
+    previous_line: str
     """
     cur_lines = open(path).readlines()
     print(path)
@@ -122,12 +217,14 @@ def add_lines_to_configfile(path, new_lines, previous_key):
                     f.write("%s\n" % new_line)
                     print(new_line)
 
+
 def replace_line_in_configfile(path, new_line, target_key):
     """
-    :type path: str
-    :type line: str
-    :type target_key: str
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    line: str
+    target_key: str
     """
     cur_lines = open(path).readlines()
     print(path)
@@ -148,11 +245,14 @@ def replace_line_in_configfile(path, new_line, target_key):
                 print(new_line)
                 written = True
 
+
 def dump_hyperparams_summary(path_in, path_out, exception_names):
     """
-    :type path_in: str
-    :type path_out: str
-    :type exception_names: list of str
+    Parameters
+    ----------
+    path_in: str
+    path_out: str
+    exception_names: list[str]
     """
     result = [] # list of {str: str}
 
@@ -180,41 +280,61 @@ def dump_hyperparams_summary(path_in, path_out, exception_names):
     print(df)
     df.to_csv(path_out, index=False)
 
+
 ############################
 # General
 
+
 def get_basename_without_ext(path):
     """
-    :type path: str
-    :rtype: str
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+    str
     """
     basename = os.path.basename(path)
     return os.path.splitext(basename)[0]
 
+
 def get_current_time():
     """
-    :rtype: str
+    Returns
+    -------
+    str
     """
     # return datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     return datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
+
 def get_random_english_word():
     """
-    :rtype: word
+    Returns
+    -------
+    str
     """
     path = os.path.join(os.path.dirname(__file__), "englishwords.txt")
     words = read_lines(path)
     word = np.random.choice(words)
     return word
 
+
 def hash_string(text):
     """
-    :type text: str
-    :rtype: int
+    Parameters
+    ----------
+    text: str
+
+    Returns
+    -------
+    int
     """
     h = hashlib.sha256(text.encode()).hexdigest()
     i = str(int(h, 16))
     return int(i[:8]) # to limit the value between 0 and 2***32-1
+
 
 class StopWatch(object):
 
@@ -222,15 +342,31 @@ class StopWatch(object):
         self.dictionary = {}
 
     def start(self, name=None):
+        """
+        Parameters
+        ----------
+        name: str or None, default None
+        """
         start_time = time.time()
         self.dictionary[name] = {}
         self.dictionary[name]["start"] = start_time
 
     def stop(self, name=None):
+        """
+        Parameters
+        ----------
+        name: str or None, default None
+        """
         stop_time = time.time()
         self.dictionary[name]["stop"] = stop_time
 
     def get_time(self, name=None, minute=False):
+        """
+        Parameters
+        ----------
+        name: str or None, default None
+        minute: bool, default False
+        """
         start_time = self.dictionary[name]["start"]
         stop_time = self.dictionary[name]["stop"]
         span = stop_time - start_time
@@ -238,14 +374,17 @@ class StopWatch(object):
             span /= 60.0
         return span
 
+
 ############################
 # IO
 
+
 def mkdir(path, newdir=None):
     """
-    :type path: str
-    :type newdir: None, or str
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    newdir: str or None, default None
     """
     if newdir is None:
         target = path
@@ -255,10 +394,16 @@ def mkdir(path, newdir=None):
         os.makedirs(target)
         writelog("Created directory = %s" % target)
 
+
 def read_vocab(path):
     """
-    :type path: str
-    :rtype: {str: int}
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+    dict[str, int]
     """
     begin_time = time.time()
     writelog("Loading a vocabulary from %s" % path)
@@ -271,21 +416,29 @@ def read_vocab(path):
     writelog("Vocabulary size = %d" % len(vocab))
     return vocab
 
+
 def write_vocab(path, data):
     """
-    :type path: str
-    :type data: list of (str, int)
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    data: list[(str, int)]
     """
     with open(path, "w") as f:
         for word_id, (word, freq) in enumerate(data):
             f.write("%s\t%d\t%d\n" % (word, word_id, freq))
 
+
 def read_lines(path, process=lambda line: line):
     """
-    :type path: str
-    :type process: function
-    :rtype: list of Any
+    Parameters
+    ----------
+    path: str
+    process: function: str -> Any, default function: str -> str
+
+    Returns
+    -------
+    list[Any]
     """
     lines = []
     for line in open(path):
@@ -294,22 +447,31 @@ def read_lines(path, process=lambda line: line):
         lines.append(line)
     return lines
 
+
 def write_lines(path, lines, process=lambda line: line):
     """
-    :type path: str
-    :type lines: list of Any
-    :type process: function
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    lines: list[Any]
+    process: function: Any -> str
     """
     with open(path, "w") as f:
         for line in lines:
             line = process(line)
             f.write("%s\n" % line)
 
+
 def read_json(path, encoding=None):
     """
-    :type path: str
-    :rtype: dictionary
+    Parameters
+    ----------
+    path: str
+    encoding: str or None, default None
+
+    Returns
+    -------
+    dict[Any, Any]
     """
     if encoding is None:
         with open(path) as f:
@@ -320,28 +482,42 @@ def read_json(path, encoding=None):
             dct = json.loads(line)
     return dct
 
+
 def write_json(path, dct):
     """
-    :type path: str
-    :type dct: dictionary
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    dct: dict[Any, Any]
     """
     with open(path, "w") as f:
         json.dump(dct, f, indent=4)
 
+
 def read_jsonlines(path):
     """
-    :type path: str
-    :rtype: list of dictionary
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+    list[dict[Any, Any]]
     """
     with jsonlines.open(path) as reader:
         dcts = list(reader)
     return dcts
 
+
 def read_vectors(path):
     """
-    :type path: str
-    :rtype: numpy.ndarray(shape=(N,dim), dtype=float)
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+    numpy.ndarray(shape=(N, dim), dtype=float)
     """
     vectors = []
     for line in open(path):
@@ -351,11 +527,13 @@ def read_vectors(path):
     vectors = np.asarray(vectors)
     return vectors
 
+
 def write_vectors(path, vectors):
     """
-    :type path: str
-    :type vectors: numpy.ndarray(shape=(N,dim), dtype=float)
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    vectors: numpy.ndarray(shape=(N, dim), dtype=float)
     """
     with open(path, "w") as f:
         for i in range(len(vectors)):
@@ -364,13 +542,19 @@ def write_vectors(path, vectors):
             vector = " ".join(vector)
             f.write("%s\n" % vector)
 
+
 def read_dictionary(path, multivals=False, func_key=lambda x: x, func_val=lambda x: x):
     """
-    :type path
-    :type multivals: bool
-    :type func_key: <str> -> <Any>
-    :type func_val: <str> -> <Any>
-    :rtype: {Any: Any}/{Any: list of Any}
+    Parameters
+    ----------
+    path: str
+    multivals: bool, default False
+    func_key: function: str -> Any
+    func_val: function: str -> Any
+
+    Returns
+    -------
+    dict[Any, Any] or dict[Any, list[Any]]
     """
     d = {}
     for line in open(path):
@@ -392,12 +576,20 @@ def read_dictionary(path, multivals=False, func_key=lambda x: x, func_val=lambda
             d[func_key(key)] = func_val(val)
     return d
 
+
 def read_conll(path, keys):
     """
-    :type path: str
-    :type keys: list of str
-    :rtype: list of list of {str: str}
+    Parameters
+    ----------
+    path: str
+    keys: list[str]
 
+    Returns
+    -------
+    list[list[dict[str, str]]]
+
+    Notes
+    -----
     CoNLL-X: ID FORM LEMMA CPOSTAG POSTAG FEATS HEAD DEPREL PHEAD PDEPREL
     CoNLL-U: ID FORM LEMMA UPOS    XPOS   FEATS HEAD DEPREL DEPS  MISC
     """
@@ -423,11 +615,13 @@ def read_conll(path, keys):
         sentences.append(sentence)
     return sentences
 
+
 def write_conll(path, sentences):
     """
-    :type path: str
-    :type sentences: list of list of {str: str}
-    :rtype: None
+    Parameters
+    ----------
+    path: str
+    sentences: list[list[dict[str, str]]]
     """
     with open(path, "w") as f:
         for sentence in sentences:
@@ -436,16 +630,24 @@ def write_conll(path, sentences):
                 f.write("\t".join(items) + "\n")
             f.write("\n")
 
+
 def convert_conll_to_linebyline_format(path_conll, keys, ID, FORM, POSTAG, HEAD, DEPREL):
     """
-    :type path_conll: str
-    :type keys: list of str
-    :type ID: str
-    :type FORM: str
-    :type POSTAG: str
-    :type HEAD: str
-    :type DEPREL: str
-    :rtype: list of str, list of str, list of (int, int, str)
+    Parameters
+    ----------
+    path_conll: str
+    keys: list[str]
+    ID: str
+    FORM: str
+    POSTAG: str
+    HEAD: str
+    DEPREL: str
+
+    Returns
+    -------
+    list[str]
+    list[str]
+    list[(int, int, str)]
     """
     assert ID in keys
     assert FORM in keys
@@ -498,26 +700,31 @@ def convert_conll_to_linebyline_format(path_conll, keys, ID, FORM, POSTAG, HEAD,
 
     return batch_tokens, batch_postags, batch_arcs
 
+
 def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals, func_key=lambda x: x, func_val=lambda x: x):
     """
-    :type dictionary: {str: list of str}
-    :type key_of_keys: str
-    :type key_of_vals: str
-    :type func_key: <str> -> <Any>
-    :type func_val: <str> -> <Any>
-    :rtype: {Any: Any}
+    Parameters
+    ----------
+    dictionary: dict[str, list[str]]
+    key_of_keys: str
+    key_of_vals: str
+    func_key: function: str -> Any
+    func_val: function: str -> Any
 
-    Example:
-    utils.transform_columnwisedict_to_rowwisedict(
+    Returns
+    -------
+    dict[Any, Any]
+
+    Examples
+    --------
+    >> utils.transform_columnwisedict_to_rowwisedict(
             dictionary={"ID": ["0", "1", "2"],
                         "text": ["hello world", "colorless green ideas", "sleep furiously"]},
             key_of_keys="ID",
             key_of_vals="text",
             func_key=lambda x: int(x),
             func_val=lambda x: x.split())
-    => {0: ["hello", "world"],
-        1: ["colorless", "green", "ideas"],
-        2: ["sleep", "furiously"]}
+    {0: ["hello", "world"], 1: ["colorless", "green", "ideas"], 2: ["sleep", "furiously"]}
     """
     new_dictionary = {}
     for raw_key, raw_val in zip(dictionary[key_of_keys], dictionary[key_of_vals]):
@@ -527,12 +734,14 @@ def transform_columnwisedict_to_rowwisedict(dictionary, key_of_keys, key_of_vals
         new_dictionary[key] = val
     return new_dictionary
 
+
 def print_list(lst, with_index=False, process=None):
     """
-    :type lst: list of Any
-    :type with_index: bool
-    :type process: function
-    :rtype: None
+    Parameters
+    ----------
+    lst: list[Any]
+    with_index: bool, default False
+    process: function: Any -> Any
     """
     for i, x in enumerate(lst):
         if process is not None:
@@ -542,29 +751,44 @@ def print_list(lst, with_index=False, process=None):
         else:
             print(x)
 
+
 def print_dict(dictionary):
     """
-    :type dictionary: {Any: Any}
-    :rtype: None
+    Parameters
+    ----------
+    dictionary: dict[Any, Any]
     """
     for key in dictionary.keys():
         print("%s: %s" % (key, dictionary[key]))
 
+
 def pretty_format_dict(dct):
     """
-    :type dct: dictionary
-    :rtype: str
+    Parameters
+    ----------
+    dct: dict[Any, Any]
+
+    Returns
+    -------
+    str
     """
     return "{}".format(json.dumps(dct, indent=4))
 
+
 ############################
-# Numerical calculation
+# Numerical computation
+
 
 def safe_div(x, y):
     """
-    :type x: numpy.ndarray
-    :type y: numpy.ndarray
-    :rtype: numpy.ndarray
+    Parameters
+    ----------
+    x: float or numpy.ndarray
+    y: float or numpy.ndarray
+
+    Returns
+    -------
+    float or numpy.ndarray
     """
     if isinstance(x, np.ndarray):
         mask = y == 0
@@ -577,18 +801,30 @@ def safe_div(x, y):
         else:
             return x / y
 
+
 def normalize_vectors(mat):
     """
-    :type mat: numpy.ndarray(shape=(batch,feat_dim))
-    :rtype: numpy.ndarray(shape=(batch,feat_dim))
+    Parameters
+    ----------
+    mat: numpy.ndarray(shape=(batch, feat_dim))
+
+    Returns
+    -------
+    numpy.ndarray(shape=(batch, feat_dim))
     """
     return mat / np.linalg.norm(mat, axis=1)[:,None]
 
+
 def levenshtein_distance(seq1, seq2):
     """
-    :type seq1: list of Any
-    :type seq2: list of Any
-    :rtype: float
+    Parameters
+    ----------
+    seq1: list[Any]
+    seq2: list[Any]
+
+    Returns
+    -------
+    float
     """
     length1 = len(seq1)
     length2 = len(seq2)
@@ -614,33 +850,52 @@ def levenshtein_distance(seq1, seq2):
 
     return table[length1, length2]
 
+
 ############################
-# Data structures
+# Array manipulation
+
 
 def filter_by_condition(xs, ys, condition_function):
     """
-    :type xs: list of list of Any
-    :type ys: list of Any
-    :type condition_function: function
-    :rtype: list of Any
+    Parameters
+    ----------
+    xs: list[list[Any]]
+    ys: list[Any]
+    condition_function: function: list[Any] -> bool
+
+    Returns
+    -------
+    list[Any]
     """
     assert len(xs) == len(ys)
     indices = [i for i, x in enumerate(xs) if condition_function(x)]
     zs = [ys[i] for i in indices]
     return zs
 
+
 def flatten_lists(list_of_lists):
     """
-    :type list_of_lists: list of list of T
-    :rtype: list of T
+    Parameters
+    ----------
+    list_of_lists: list[list[Any]]
+
+    Returns
+    -------
+    list[Any]
     """
     return [elem for lst in list_of_lists for elem in lst]
 
+
 def compare_dictionary_keys(dict1, dict2):
     """
-    :type dict1: {Any: Any}
-    :type dict2: {Any: Any}
-    :rtype: bool
+    Parameters
+    ----------
+    dict1: dict[Any, Any]
+    dict2: dict[Any, Any]
+
+    Returns
+    -------
+    bool
     """
     keys1 = set(dict1.keys())
     keys2 = set(dict2.keys())
@@ -649,12 +904,18 @@ def compare_dictionary_keys(dict1, dict2):
     else:
         False
 
+
 def random_replace_list(xs, ps, z):
     """
-    :type xs: list of Any
-    :type ps: list of float
-    :type z: Any
-    :rtype: list of Any
+    Parameters
+    ----------
+    xs: list[Any]
+    ps: float or list[float]
+    z: Any
+
+    Returns
+    -------
+    list[Any]
     """
     N = len(xs)
     if isinstance(ps, float):
@@ -664,6 +925,7 @@ def random_replace_list(xs, ps, z):
     rs = np.random.random((N,))
     ys = [z if r < p else x for x,p,r in zip(xs,ps,rs)]
     return ys
+
 
 class DataInstance(object):
 
@@ -676,11 +938,17 @@ class DataInstance(object):
     def __str__(self):
         return "DataInstance(%s)" % ",".join(self.attr_names)
 
+
 def filter_dataset(dataset, condition):
     """
-    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
-    :type condition: function
-    :rtype: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    Parameters
+    ----------
+    dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    condition: function: DataInstance -> bool
+
+    Returns
+    -------
+    numpy.ndarray(shape=(dataset_size,), dtype="O")
     """
     filtered_dataset = []
     for data in dataset:
@@ -689,12 +957,19 @@ def filter_dataset(dataset, condition):
     filtered_dataset = np.asarray(filtered_dataset, dtype="O")
     return filtered_dataset
 
+
 def split_dataset(dataset, n_dev, seed=None):
     """
-    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
-    :type n_dev: int
-    :type deed: int / None
-    :rtype: numpy.ndarray(shape=(dataset_size-n_dev,), dtype="O"), numpy.ndarray(shape=(n_dev,), dtype="O")
+    Parameters
+    ----------
+    dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    n_dev: int
+    seed: int or None, default None
+
+    Returns
+    -------
+    numpy.ndarray(shape=(dataset_size - n_dev,), dtype="O")
+    numpy.ndarray(shape=(n_dev,), dtype="O")
     """
     n_total = len(dataset)
     assert 0 < n_dev < n_total
@@ -714,12 +989,19 @@ def split_dataset(dataset, n_dev, seed=None):
 
     return train_dataset, dev_dataset
 
+
 def kfold_dataset(dataset, n_splits, split_id):
     """
-    :type dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
-    :type n_splits: int
-    :type split_id: int
-    :rtype: numpy.ndarray(shape=(train_size,), dtype="O"), numpy.ndarray(shape=(dev_size,), dtype="O")
+    Parameters
+    ----------
+    dataset: numpy.ndarray(shape=(dataset_size,), dtype="O")
+    n_splits: int
+    split_id: int
+
+    Returns
+    -------
+    numpy.ndarray(shape=(train_size,), dtype="O")
+    numpy.ndarray(shape=(dev_size,), dtype="O")
     """
     assert 0 <= split_id < n_splits
 
@@ -734,7 +1016,13 @@ def kfold_dataset(dataset, n_splits, split_id):
 
     return train_dataset, dev_dataset
 
+
 class DataBatch(object):
+    """
+    Notes
+    -----
+    Deprecated.
+    """
 
     def __init__(self, **kargs):
         self.attr_names = []
@@ -751,11 +1039,21 @@ class DataBatch(object):
     def __len__(self):
         return len(getattr(self, self.attr_names[0]))
 
+
 def concat_databatch(databatch1, databatch2):
     """
-    :type databatch1: DataBatch
-    :type databatch2: DataBatch
-    :rtype: DataBatch
+    Parameters
+    ----------
+    databatch1: DataBatch
+    databatch2: DataBatch
+
+    Returns
+    -------
+    DataBatch
+
+    Notes
+    -----
+    Deprecated.
     """
     attr_names1 = set(databatch1.attr_names)
     attr_names2 = set(databatch2.attr_names)
@@ -773,11 +1071,21 @@ def concat_databatch(databatch1, databatch2):
     databatch = DataBatch(**kargs)
     return databatch
 
+
 def filter_databatch(databatch, filtering_function):
     """
-    :type databatch: DataBatch
-    :type filtering_function: function
-    :rtype: DataBatch
+    Parameters
+    ----------
+    databatch: DataBatch
+    filtering_function: function: databatch, int -> bool
+
+    Returns
+    -------
+    DataBatch
+
+    Notes
+    -----
+    Deprecated.
     """
     kargs = {}
     for attr_name in databatch.attr_names:
@@ -795,13 +1103,21 @@ def filter_databatch(databatch, filtering_function):
     new_databatch = DataBatch(**kargs)
     return new_databatch
 
+
 class DataPool(object):
+    """
+    Notes
+    -----
+    Deprecated.
+    """
 
     def __init__(self, paths, processes=None, pool_size=1000000):
         """
-        :type paths: list of str
-        :type processes: list of function
-        :type pool_size: int
+        Parameters
+        ----------
+        paths: list[str]
+        processes: list[function]
+        pool_size: int, default 1000000
         """
         self.paths = paths
 
@@ -853,8 +1169,13 @@ class DataPool(object):
 
     def get_instances(self, batch_size):
         """
-        :type batch_size: int
-        :rtype: list of numpy.ndarray(shape=(batch_size,), dtype="O")
+        Parameters
+        ----------
+        batch_size: int
+
+        Returns
+        -------
+        list[numpy.ndarray(shape=(batch_size,), dtype="O")]
         """
         indices = np.random.choice(self.pool_size, size=batch_size) # NOTE that ``replace'' is True.
         output = [getattr(self, pool_attr_name)[indices] for pool_attr_name in self._pool_attr_names]
@@ -866,14 +1187,21 @@ class DataPool(object):
 
     def _process(self, tpl):
         """
-        :type tpl: tuple of str
-        :rtype: list of Any
+        Parameters
+        ----------
+        tpl: tuple[str]
+
+        Returns
+        -------
+        list[Any]
         """
         return [process(line.strip()) for line, process in zip(tpl, self.processes)]
 
     def _read_line(self):
         """
-        :rtype: list of Any
+        Returns
+        -------
+        list[Any]
         """
         if self._line_i >= self._n_lines:
             self._current_iterator = self._get_init_iterator()
@@ -886,8 +1214,9 @@ class DataPool(object):
 
     def _fill_pools(self, indices=None):
         """
-        :type indices: list of int
-        :rtype: None
+        Parameters
+        ----------
+        indices: list[int] or None, default None
         """
         if indices is None:
             indices = range(self.pool_size)
@@ -901,8 +1230,13 @@ class DataPool(object):
 
     def get_random_instances(self, n_instances):
         """
-        :type n_instances: int
-        :rtype: list of list of Any
+        Parameters
+        ----------
+        n_instances: int
+
+        Returns
+        -------
+        list[list[Any]]
         """
         output = []
         line_indices = np.random.choice(self._n_lines, size=n_instances, replace=False)
@@ -914,8 +1248,10 @@ class DataPool(object):
             line_i += 1
         return output
 
+
 ############################
 # Machine learning
+
 
 class TemplateFeatureExtractor(object):
 
@@ -928,15 +1264,21 @@ class TemplateFeatureExtractor(object):
     ####################################
     def aggregate_templates(self, args):
         """
-        :type args: Any
-        :rtype: list of str
+        Parameters
+        ----------
+        args: Any
+
+        Returns
+        -------
+        list[str]
         """
         pass # NOTE: To be defined.
 
     def add_template(self, **kargs):
         """
-        :type kargs: {str: str}
-        :rtype: None
+        Parameters
+        ----------
+        kargs: dict[str, str]
         """
         template = self.convert_to_template(**kargs)
         if not template in self.templates:
@@ -944,8 +1286,13 @@ class TemplateFeatureExtractor(object):
 
     def convert_to_template(self, **kargs):
         """
-        :type kargs: {str: str}
-        :rtype: str
+        Parameters
+        ----------
+        kargs: dict[str, str]
+
+        Returns
+        -------
+        str
         """
         lst = ["%s=%s" % (key,val) for key,val in kargs.items()]
         lst = ",".join(lst)
@@ -955,9 +1302,6 @@ class TemplateFeatureExtractor(object):
 
     ####################################
     def prepare(self):
-        """
-        :rtype: None
-        """
         self.template2dim = {template:dim for dim,template in enumerate(self.templates)}
         self.feature_size = len(self.templates)
         self.UNK_TEMPLATE_DIM = self.feature_size
@@ -966,8 +1310,13 @@ class TemplateFeatureExtractor(object):
     ####################################
     def extract_features(self, args):
         """
-        :type args: Any
-        :rtype: numpy.ndarray(shape=(1, feature_size), dtype=np.float32)
+        Parameters
+        ----------
+        args: Any
+
+        Returns
+        -------
+        numpy.ndarray(shape=(1, feature_size), dtype=np.float32)
         """
         # NOTE: To be defined.
         templates = self.generate_templates(args=args)
@@ -978,8 +1327,13 @@ class TemplateFeatureExtractor(object):
 
     def extract_batch_features(self, batch_args):
         """
-        :type batch_args: Any
-        :rtype: numpy.ndarray(shape=(batch_size, feature_size), dtype=np.float32)
+        Parameters
+        ----------
+        batch_args: list[Any]
+
+        Returns
+        -------
+        numpy.ndarray(shape=(batch_size, feature_size), dtype=np.float32)
         """
         # NOTE: To be defined.
         fire = [] # list of list of int
@@ -994,17 +1348,28 @@ class TemplateFeatureExtractor(object):
 
     def generate_templates(self, args):
         """
-        :type args: Any
-        :rtype: list of str
+        Parameters
+        ----------
+        args: Any
+
+        Returns
+        -------
+        list[str]
         """
         pass # NOTE: To be defined.
     ####################################
 
+
 def make_multihot_vectors(dim, fire):
     """
-    :type dim: int
-    :type fire: list of list of int
-    :rtype: numpy.ndarray(shape=(N, dim), dtype=np.float32)
+    Parameters
+    ----------
+    dim: int
+    fire: list[list[int]]
+
+    Returns
+    -------
+    numpy.ndarray(shape=(N, dim), dtype=np.float32)
     """
     n_instances = len(fire)
     vectors = np.zeros((n_instances, dim), dtype=np.float32)
@@ -1012,9 +1377,16 @@ def make_multihot_vectors(dim, fire):
         vectors[instance_i, fire[instance_i]] = 1.0
     return vectors
 
+
 class BestScoreHolder(object):
 
     def __init__(self, scale=1.0, higher_is_better=True):
+        """
+        Parameters
+        ----------
+        scale: float, default 1.0
+        higher_is_better: bool, default True
+        """
         self.scale = scale
         self.higher_is_better = higher_is_better
 
@@ -1039,6 +1411,16 @@ class BestScoreHolder(object):
         self.patience = 0
 
     def compare_scores(self, score, step):
+        """
+        Parameters
+        ----------
+        score: float
+        step: int
+
+        Returns
+        -------
+        bool
+        """
         if self.comparison_function(self.best_score, score):
             # Update the score
             writelog("(best_score = %.02f, best_step = %d, patience = %d) -> (%.02f, %d, %d)" % \
@@ -1057,21 +1439,33 @@ class BestScoreHolder(object):
             return False
 
     def ask_finishing(self, max_patience):
+        """
+        Parameters
+        ----------
+        max_patience: int
+
+        Returns
+        -------
+        bool
+        """
         if self.patience >= max_patience:
             return True
         else:
             return False
 
+
 ############################
 # NLP
+
 
 class BoW(object):
 
     def __init__(self, documents, tfidf):
         """
-        :type documents: list of list of str
-        :type tfidf: bool
-        :rtype: None
+        Parameters
+        ----------
+        documents: list[list[str]]
+        tfidf: bool
         """
         self.tfidf = tfidf
 
@@ -1087,36 +1481,56 @@ class BoW(object):
 
     def forward(self, documents):
         """
-        :type documents: list of list of str
-        :rtype: numpy.ndarray(shape=(N,|V|), dtype=np.float32)
+        Parameters
+        ----------
+        documents: list[list[str]]
+
+        Returns
+        -------
+        numpy.ndarray(shape=(N,|V|), dtype=np.float32)
         """
         X = self.vectorizer.transform([" ".join(d) for d in documents])
         return X.toarray().astype(np.float32)
 
+
 def read_english_stopwords():
     """
-    :rtype: list of str
+    Returns
+    -------
+    list[str]
     """
     stopwords = read_lines(os.path.join(os.path.dirname(__file__), "stopwords.txt"))
     return stopwords
 
+
 def read_word_embedding_matrix(path, dim, vocab, scale):
     """
-    :type path: str
-    :type dim: int
-    :type vocab: {str: int}
-    :type scale: float
-    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
+    Parameters
+    ----------
+    path: str
+    dim: int
+    vocab: dict[str, int]
+    scale: float
+
+    Returns
+    -------
+    numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
     """
     word2vec = read_word2vec(path, dim)
     W = convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale)
     return W
 
+
 def read_word2vec(path, dim=None):
     """
-    :type path: str
-    :type dim: int
-    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    Parameters
+    ----------
+    path: str
+    dim: int or None, default None
+
+    Returns
+    -------
+    dict[str, numpy.ndarray(shape=(dim,), dtype=np.float32)]
     """
     writelog("Loading pretrained word vectors from %s ..." % path)
 
@@ -1163,13 +1577,19 @@ def read_word2vec(path, dim=None):
     writelog("%s" % prog_bar)
     return word2vec
 
+
 def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     """
-    :type vocab: {str -> int}
-    :type word2vec: {str -> numpy.ndarray(shape=(dim,), dtype=np.float32)}
-    :type dim: int
-    :type scale: float
-    :rtype: numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
+    Parameters
+    ----------
+    vocab: dict[str, int]
+    word2vec: dict[str, numpy.ndarray(shape=(dim,), dtype=np.float32)]
+    dim: int
+    scale: float
+
+    Returns
+    -------
+    numpy.ndarray(shape=(vocab_size, dim), dtype=np.float32)
     """
     writelog("Converting ...")
     begin_time = time.time()
@@ -1192,19 +1612,31 @@ def convert_word2vec_to_weight_matrix(vocab, word2vec, dim, scale):
     writelog("Converted. %f [sec.]" % (end_time - begin_time))
     return W
 
+
 def read_word2vec_using_gensim(path, binary):
     """
-    :type path: str
-    :type binary: bool
-    :rtype: gensim.models.keyedvectors.Word2VecKeyedVectors
+    Parameters
+    ----------
+    path: str
+    binary: bool
+
+    Returns
+    -------
+    gensim.models.keyedvectors.Word2VecKeyedVectors
     """
     model = gensim.models.KeyedVectors.load_word2vec_format(path, binary=binary)
     return model
 
+
 def keyedvectors2dict(model):
     """
-    :type model: gensim.models.keyedvectors.Word2VecKeyedVectors
-    :rtype: {str: numpy.ndarray(shape=(dim,), dtype=np.float32)}
+    Parameters
+    ----------
+    model: gensim.models.keyedvectors.Word2VecKeyedVectors
+
+    Returns
+    -------
+    dict[str, numpy.ndarray(shape=(dim,), dtype=np.float32)]
     """
     word2vec = {}
     vocab = model.vocab
@@ -1212,7 +1644,15 @@ def keyedvectors2dict(model):
         word2vec[word] = model[word]
     return word2vec
 
+
 def read_process_and_write(paths_in, paths_out, process: lambda line: line):
+    """
+    Parameters
+    ----------
+    paths_in: list[str]
+    paths_out: list[str]
+    process: function: str -> str
+    """
     assert len(paths_in) == len(paths_out)
     n_files = len(paths_in)
     prog_bar = pyprind.ProgBar(n_files)
@@ -1224,17 +1664,19 @@ def read_process_and_write(paths_in, paths_out, process: lambda line: line):
                 f.write("%s\n" % line)
         prog_bar.update()
 
+
 def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words, process=lambda line: line.strip().split(), unk_symbol=None, with_unk=True):
     """
-    :type paths_file: list of str
-    :type path_vocab: str
-    :type prune_at: int
-    :type min_count: int
-    :type special_words: list of str
-    :type process: function from str to list of str
-    :type unk_symbol: str
-    :type with_unk: bool
-    :rtype: None
+    Parameters
+    ----------
+    paths_file: list[str]
+    path_vocab: str
+    prune_at: int
+    min_count: int
+    special_words: list[str]
+    process: function: str -> list[str]
+    unk_symbol: str or None, default None
+    with_unk: bool, default True
     """
     assert not os.path.exists(path_vocab)
 
@@ -1284,7 +1726,14 @@ def build_vocabulary(paths_file, path_vocab, prune_at, min_count, special_words,
 
     writelog("Saved the vocabulary to %s" % path_vocab)
 
+
 def concat_vocabularies(paths_vocab, path_out):
+    """
+    Parameters
+    ----------
+    paths_vocab: list[str]
+    path_out: str
+    """
     assert len(paths_vocab) > 1
 
     vocab = OrderedDict()
@@ -1307,13 +1756,15 @@ def concat_vocabularies(paths_vocab, path_out):
 
     writelog("Saved the vocabulary to %s" % path_out)
 
+
 def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
     """
-    :type paths_in: list of str
-    :type paths_out: list of str
-    :type path_vocab: str
-    :type unk_symbol: str
-    :rtype: None
+    Parameters
+    ----------
+    paths_in: list[str]
+    paths_out: list[str]
+    path_vocab: str
+    unk_symbol: str or None, default None
     """
     assert len(paths_in) == len(paths_out)
 
@@ -1338,11 +1789,17 @@ def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
 
         prog_bar.update()
 
+
 def get_word_counter(path=None, lines=None):
     """
-    :type path: str
-    :type lines: list of list of str
-    :type process: function
+    Parameters
+    ----------
+    path: str or None, default None
+    lines: list[list[str]] or None, default None
+
+    Returns
+    -------
+    collections.Counter
     """
     counter = Counter()
 
@@ -1360,12 +1817,14 @@ def get_word_counter(path=None, lines=None):
 
     return counter
 
+
 def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
     """
-    :type path_dir: str
-    :type top_k: int
-    :type process: function
-    :rtype: None
+    Parameters
+    ----------
+    path_dir: str
+    top_k: int
+    process: function: str -> list[str]
     """
     filenames = os.listdir(path_dir)
 
@@ -1386,7 +1845,18 @@ def calc_word_stats(path_dir, top_k, process=lambda line: line.split()):
         w, freq = counter[k]
         writelog("word = %s, frequency = %d" % (w, freq))
 
+
 def normalize_string(string, able=None):
+    """
+    Parameters
+    ----------
+    string: str
+    able: list[str] or None, default None
+
+    Returns
+    -------
+    str
+    """
     if able is None:
         return string
     if "space" in able:
@@ -1403,24 +1873,43 @@ def normalize_string(string, able=None):
         string = re.sub(r"&gt;", ">", string)
     return string
 
+
 ############################
-# Neural network (using Chainer)
+# Chainer
+
+# Deprecated!!!
 
 def transform_words(xs):
     """
-    :type xs: list of list(len=L) of int
-    :rtype: list of Variable(shape=(L,), dtype=np.int32)
+    Parameters
+    ----------
+    xs: list[list[int]]
+
+    Returns
+    -------
+    list[Variable(shape=(L,), dtype=np.int32)]
+
+    Notes
+    -----
+    Deprecated.
     """
     xs = [np.asarray(x, dtype=np.int32) for x in xs]
     xs = [Variable(cuda.cupy.asarray(x)) for x in xs]
     return xs
 
+
 def padding(xs, head, with_mask):
     """
-    :type xs: list of list of int
-    :type head: bool
-    :type with_mask: bool
-    :rtype: numpy.ndarray(shape=(N, max_length)), numpy.ndarray(shape(N, max_length))
+    Parameters
+    ----------
+    xs: list[list[int]]
+    head: bool
+    with_mask: bool
+
+    Returns
+    -------
+    numpy.ndarray(shape=(N, max_length))
+    numpy.ndarray(shape(N, max_length))
     """
     N = len(xs)
     max_length = max([len(x) for x in xs])
@@ -1441,17 +1930,28 @@ def padding(xs, head, with_mask):
     else:
         return ys
 
+
 def convert_ndarray_to_variable(xs, seq):
     """
-    :type xs: numpy.ndarray(shape=(N, L))
-    :type seq: bool
-    :rtype: list(len=L) of Variable(shape=(N,)), or Variable(shape=(N, L))
+    Parameters
+    ----------
+    xs: numpy.ndarray(shape=(N, L))
+    seq: bool
+
+    Returns
+    -------
+    list[Variable(shape=(N,))] or Variable(shape=(N, L))
+
+    Notes
+    -----
+    Deprecated.
     """
     if seq:
         return [Variable(cuda.cupy.asarray(xs[:,j]))
                 for j in range(xs.shape[1])]
     else:
         return Variable(cuda.cupy.asarray(xs))
+
 
 # def get_optimizer(name):
 #     """
@@ -1478,15 +1978,22 @@ def convert_ndarray_to_variable(xs, seq):
 #         raise ValueError("Unknown optimizer_name=%s" % name)
 #     return opt
 
+
 ############################
 # Analysis
 
+
 def extract_values_with_regex(filepath, regex, names):
     """
-    :type filepath: str
-    :type regex: str
-    :type names: list of str
-    :rtype: {str: list of str}
+    Parameters
+    ----------
+    filepath: str
+    regex: str
+    names: list[str]
+
+    Returns
+    -------
+    dict[str, list[str]]
     """
     re_comp = re.compile(regex, re.I)
     values = {name: [] for name in names}
@@ -1501,6 +2008,7 @@ def extract_values_with_regex(filepath, regex, names):
             for index in range(len(names)):
                 values[names[index]].append(match[index])
     return values
+
 
 # def calc_score_stats(filepaths, regex, names):
 #     """
@@ -1539,6 +2047,7 @@ def extract_values_with_regex(filepath, regex, names):
 #     df = pd.DataFrame(columns)
 #     pd.options.display.float_format = "{:,.2f}".format
 #     return df
+
 
 # def plot_given_files(
 #         filepaths, regex,
