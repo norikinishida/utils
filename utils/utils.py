@@ -18,6 +18,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import KFold
 from chainer import cuda, Variable
 import pyprind
+import pyhocon
 
 ###############################
 # Logging
@@ -279,6 +280,13 @@ def dump_hyperparams_summary(path_in, path_out, exception_names):
     df = pd.DataFrame(result)
     print(df)
     df.to_csv(path_out, index=False)
+
+
+def get_hocon_config(config_path, config_name):
+    print("Initializing config: {}".format(config_name))
+    config = pyhocon.ConfigFactory.parse_file(config_path)[config_name]
+    # writelog(pyhocon.HOCONConverter.convert(config, "hocon"))
+    return config
 
 
 ############################
