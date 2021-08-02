@@ -470,6 +470,26 @@ def write_lines(path, lines, process=lambda line: line):
             f.write("%s\n" % line)
 
 
+def read_csv(path, delimiter, with_head, with_id, encoding="utf-8"):
+    """
+    Parameters
+    ----------
+    path: str
+    delimiter: str
+    with_head: bool
+    with_id: bool
+    encoding: str, default "utf-8"
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
+    header = 0 if with_head else None
+    index_col = 0 if with_id else None
+    data = pd.read_csv(path, encoding=encoding, delimiter=delimiter, header=header, index_col=index_col)
+    return data
+
+
 def read_json(path, encoding=None):
     """
     Parameters
@@ -892,6 +912,35 @@ def flatten_lists(list_of_lists):
     list[Any]
     """
     return [elem for lst in list_of_lists for elem in lst]
+
+
+def get_boundary_indicators_for_sorted_array(sorted_array):
+    """
+    Parameters
+    ----------
+    sorted_array: list[int]
+
+    Returns
+    -------
+    list[bool]
+    list[bool]
+    """
+    start_indicators = [True]
+    for i in range(1, len(sorted_array)):
+        if sorted_array[i] != sorted_array[i - 1]:
+            start_indicators.append(True)
+        else:
+            start_indicators.append(False)
+
+    end_indicators = [True]
+    for i in range(len(sorted_array) - 2, -1, -1):
+        if sorted_array[i] != sorted_array[i + 1]:
+            end_indicators.append(True)
+        else:
+            end_indicators.append(False)
+    end_indicators = end_indicators[::-1]
+
+    return start_indicators, end_indicators
 
 
 def compare_dictionary_keys(dict1, dict2):
