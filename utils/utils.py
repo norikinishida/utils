@@ -417,7 +417,13 @@ def read_vocab(path):
     writelog("Loading a vocabulary from %s" % path)
     vocab = OrderedDict()
     for line in open(path):
-        word, word_id, freq = line.strip().split("\t")
+        items = line.strip().split("\t")
+        if len(items) == 2:
+            word, word_id = items
+        elif len(items) == 3:
+            word, word_id, freq = items
+        else:
+            raise Exception("Invalid line: %s" % items)
         vocab[word] = int(word_id)
     end_time = time.time()
     writelog("Loaded. %f [sec.]" % (end_time - begin_time))
@@ -425,16 +431,21 @@ def read_vocab(path):
     return vocab
 
 
-def write_vocab(path, data):
+def write_vocab(path, data, write_frequency=True):
     """
     Parameters
     ----------
     path: str
-    data: list[(str, int)]
+    data: list[(str, int)] or list[str]
+    write_frequency: bool, default True
     """
     with open(path, "w") as f:
-        for word_id, (word, freq) in enumerate(data):
-            f.write("%s\t%d\t%d\n" % (word, word_id, freq))
+        if write_frequency:
+            for word_id, (word, freq) in enumerate(data):
+                f.write("%s\t%d\t%d\n" % (word, word_id, freq))
+        else:
+            for word_id, word in enumerate(data):
+                f.write("%s\t%d\n" % (word, word_id))
 
 
 def read_lines(path, process=lambda line: line):
