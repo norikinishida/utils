@@ -13,8 +13,8 @@ import time
 
 import numpy as np
 import pandas as pd
-import pyprind
 import pyhocon
+import pyprind
 
 
 ###############################
