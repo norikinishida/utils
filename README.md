@@ -1,7 +1,5 @@
 # utils
 
-(c) 2019 Noriki Nishida
-
 My utility functions and classes in Python
 
 ## Requirements
@@ -20,3 +18,4 @@ $ cd ./temp
 $ git clone https://github.com/norikinishida/utils
 $ mv ./utils/utils ..
 ```
+
