@@ -1557,10 +1557,9 @@ def normalize_string(string, able=None):
 class WhitespaceTokenizer:
     def __init__(self, vocab):
         self.vocab = vocab
-​
-    # def __call__(self, text):
-        # words = text.split(" ")
-    def __call__(self, words):
+
+    def __call__(self, string):
+        words = string.split(" ")
         spaces = [True] * len(words)
         # Avoid zero-length tokens
         for i, word in enumerate(words):
@@ -1573,9 +1572,25 @@ class WhitespaceTokenizer:
             spaces = spaces[0:-1]
         else:
            spaces[-1] = False
-​
+
         return Doc(self.vocab, words=words, spaces=spaces)
-​
+
+
+def prevent_sentence_boundary_detection(doc):
+    """
+    Parameters
+    ----------
+    doc: spacy.Doc
+
+    Returns
+    -------
+    spacy.Doc
+    """
+    for token in doc:
+        # This will entirely disable spaCy's sentence detection
+        token.is_sent_start = False
+    return doc
+
 
 def get_random_english_word():
     """
