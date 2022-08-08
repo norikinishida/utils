@@ -12,13 +12,12 @@ import sys
 import time
 
 import numpy as np
-import spacy
-from spacy.tokens import Doc
 import pandas as pd
 import pyhocon
 import pyprind
+import spacy
+from spacy.tokens import Doc
 
-​
 
 ###############################
 # Logging

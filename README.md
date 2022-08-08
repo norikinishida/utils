@@ -8,6 +8,7 @@ My utility functions and classes in Python
 - pandas
 - pyhocon
 - pyprind
+- spacy
 
 ## Setup
 
