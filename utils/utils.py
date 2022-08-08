@@ -17,6 +17,7 @@ import pyhocon
 import pyprind
 import spacy
 from spacy.tokens import Doc
+from spacy.language import Language
 
 
 ###############################
@@ -1576,6 +1577,7 @@ class WhitespaceTokenizer:
         return Doc(self.vocab, words=words, spaces=spaces)
 
 
+@Language.component("prevent_sbd")
 def prevent_sentence_boundary_detection(doc):
     """
     Parameters
