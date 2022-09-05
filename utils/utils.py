@@ -1215,6 +1215,10 @@ class DataInstance(object):
             setattr(self, key, value)
             self.attr_names.append(key)
 
+    def add_attr(self, key, value):
+        self.attr_names.append(key)
+        setattr(self, key, value)
+
     def __str__(self):
         return "DataInstance(%s)" % ",".join(self.attr_names)
 
