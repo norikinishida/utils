@@ -1560,6 +1560,15 @@ def normalize_string(string, able=None):
 
 
 class WhitespaceTokenizer:
+    """
+    Examples
+    --------
+        nlp = spacy.load("en_core_web_sm")
+        nlp.tokenizer = WhitespaceTokenizer(nlp.vocab)
+        nlp.add_pipe("prevent_sbd", before="parser")
+
+    """
+
     def __init__(self, vocab):
         self.vocab = vocab
 
@@ -1591,6 +1600,12 @@ def prevent_sentence_boundary_detection(doc):
     Returns
     -------
     spacy.Doc
+
+    Examples
+    --------
+        nlp = spacy.load("en_core_web_sm")
+        nlp.tokenizer = WhitespaceTokenizer(nlp.vocab)
+        nlp.add_pipe("prevent_sbd", before="parser")
     """
     for token in doc:
         # This will entirely disable spaCy's sentence detection
