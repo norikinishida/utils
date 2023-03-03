@@ -18,6 +18,7 @@ import pyprind
 import spacy
 from spacy.tokens import Doc
 from spacy.language import Language
+from tqdm import tqdm
 
 
 ###############################
@@ -404,14 +405,12 @@ def read_and_process_and_write(paths_in, paths_out, process: lambda line: line):
     """
     assert len(paths_in) == len(paths_out)
     n_files = len(paths_in)
-    prog_bar = pyprind.ProgBar(n_files)
-    for path_in, path_out in zip(paths_in, paths_out):
+    for path_in, path_out in tqdm(zip(paths_in, paths_out)):
         with open(path_out, "w") as f:
             for line in open(path_in):
                 line = line.strip()
                 line = process(line)
                 f.write("%s\n" % line)
-        prog_bar.update()
 
 
 ############################
@@ -785,7 +784,7 @@ def build_vocabulary(paths_file,
 
     # Count
     counter = Counter()
-    for path_file in pyprind.prog_bar(paths_file):
+    for path_file in tqdm(paths_file):
         for line in open(path_file):
             tokens = process(line)
             counter.update(tokens)
@@ -876,8 +875,7 @@ def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
 
     vocab = {w:w for w in vocab}
 
-    prog_bar = pyprind.ProgBar(len(paths_in))
-    for path_in, path_out in zip(paths_in, paths_out):
+    for path_in, path_out in tqdm(zip(paths_in, paths_out)):
         lines = read_lines(path_in, process=lambda line: line.split())
 
         lines = [[vocab.get(token, unk_symbol) for token in line] for line in lines]
@@ -886,8 +884,6 @@ def replace_oov_tokens(paths_in, paths_out, path_vocab, unk_symbol=None):
             for line in lines:
                 line = " ".join(line)
                 f.write("%s\n" % line)
-
-        prog_bar.update()
 
 
 ############################
