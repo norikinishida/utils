@@ -309,6 +309,8 @@ def get_hocon_config(config_path, config_name):
     """
     print("Initializing config: {}".format(config_name))
     config = pyhocon.ConfigFactory.parse_file(config_path)[config_name]
+    config.config_path = config_path
+    config.config_name = config_name
     # writelog(pyhocon.HOCONConverter.convert(config, "hocon"))
     return config
 
