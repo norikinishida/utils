@@ -14,6 +14,7 @@ import time
 import numpy as np
 import pandas as pd
 import pyhocon
+from pyhocon.converter import HOCONConverter
 import spacy
 from spacy.tokens import Doc
 from spacy.language import Language
@@ -312,6 +313,14 @@ def get_hocon_config(config_path, config_name):
     config.config_name = config_name
     # writelog(pyhocon.HOCONConverter.convert(config, "hocon"))
     return config
+
+
+def dump_hocon_config(path_out, config):
+    with open(path_out, "w") as f:
+        f.write(config.config_name)
+        f.write(" = {\n")
+        f.write(HOCONConverter.to_hocon(config) + "\n")
+        f.write("}\n")
 
 
 ############################
