@@ -14,7 +14,6 @@ import time
 import numpy as np
 import pandas as pd
 import pyhocon
-import pyprind
 import spacy
 from spacy.tokens import Doc
 from spacy.language import Language
@@ -406,7 +405,7 @@ def read_and_process_and_write(paths_in, paths_out, process: lambda line: line):
     process: function: str -> str
     """
     assert len(paths_in) == len(paths_out)
-    n_files = len(paths_in)
+    # n_files = len(paths_in)
     for path_in, path_out in tqdm(zip(paths_in, paths_out)):
         with open(path_out, "w") as f:
             for line in open(path_in):
@@ -970,12 +969,6 @@ def read_word2vec(path, dim=None):
                 break
     writelog("Dimensionality: %d" % dim)
 
-    # Prepara prog_bar
-    n_lines = 0
-    for _ in open(path):
-        n_lines += 1
-    prog_bar = pyprind.ProgBar(n_lines)
-
     # Make a dictionary from word to vector
     error_history = []
     with open(path) as f:
@@ -991,14 +984,12 @@ def read_word2vec(path, dim=None):
                 #         (len(items[1:]), dim, line_i+1, ",".join(items[:10])))
                 continue
             word2vec[items[0]] = np.asarray([float(x) for x in items[1:]])
-            prog_bar.update()
 
     for err in error_history:
         writelog("dim %d(actual) != %d(expected), skipped %d-th line = %s ....." % \
                     (err["dim_actual"], dim, err["line_id"], err["line"]))
 
     writelog("Vocabulary size: %d" % len(word2vec))
-    writelog("%s" % prog_bar)
     return word2vec
 
 

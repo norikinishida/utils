@@ -7,8 +7,8 @@ My utility functions and classes in Python
 - numpy
 - pandas
 - pyhocon
-- pyprind
 - spacy
+- tqdm
 
 ## Setup
 
