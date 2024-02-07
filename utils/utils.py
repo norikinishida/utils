@@ -294,21 +294,22 @@ def dump_hyperparams_summary(path_in, path_out, exception_names):
     df.to_csv(path_out, index=False)
 
 
-def get_hocon_config(config_path, config_name):
+def get_hocon_config(config_path, config_name=None):
     """
     Generate a configuration dictionary.
 
     Parameters
     ----------
     config_path : str
-    config_name : str
+    config_name : str, default None
 
     Returns
     -------
     ConfigTree
     """
-    print("Initializing config: {}".format(config_name))
-    config = pyhocon.ConfigFactory.parse_file(config_path)[config_name]
+    config = pyhocon.ConfigFactory.parse_file(config_path)
+    if config_name is not None:
+        config = config[config_name]
     config.config_path = config_path
     config.config_name = config_name
     # writelog(pyhocon.HOCONConverter.convert(config, "hocon"))
@@ -317,10 +318,7 @@ def get_hocon_config(config_path, config_name):
 
 def dump_hocon_config(path_out, config):
     with open(path_out, "w") as f:
-        f.write(config.config_name)
-        f.write(" = {\n")
         f.write(HOCONConverter.to_hocon(config) + "\n")
-        f.write("}\n")
 
 
 ############################
@@ -730,7 +728,7 @@ def read_vocab(path):
     dict[str, int]
     """
     begin_time = time.time()
-    writelog("Loading a vocabulary from %s" % path)
+    # writelog("Loading a vocabulary from %s" % path)
     vocab = OrderedDict()
     for line in open(path):
         items = line.strip().split("\t")
@@ -742,8 +740,8 @@ def read_vocab(path):
             raise Exception("Invalid line: %s" % items)
         vocab[word] = int(word_id)
     end_time = time.time()
-    writelog("Loaded. %f [sec.]" % (end_time - begin_time))
-    writelog("Vocabulary size: %d" % len(vocab))
+    # writelog("Loaded. %f [sec.]" % (end_time - begin_time))
+    # writelog("Vocabulary size: %d" % len(vocab))
     return vocab
 
 
