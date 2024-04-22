@@ -63,6 +63,14 @@ def set_logger(filename, overwrite=False):
     logger.addHandler(logging.FileHandler(filename, "w"))
 
 
+def pop_logger_handler():
+    assert len(logger.handlers) > 1
+    handler = logger.handlers.pop()
+    logger.removeHandler(handler)
+    handler.close()
+    print(f"Removed {handler} from the logger {logger}.")
+
+
 ############################
 # Configulation
 ############################
